@@ -1,0 +1,215 @@
+/* 
+Relatório de Devolução de Material
+
+Este relatório tem como objetivo consolidar informações sobre devoluções de materiais, 
+permitindo mensurar as solicitações de recolhimento e identificar o que foi efetivamente devolvido.
+
+Durante a análise, foi identificado um problema estrutural: a tabela de solicitações de devolução 
+não possui vínculo direto com os registros de itens devolvidos. Ou seja, não existe um campo que 
+relacione explicitamente a solicitação ao item devolvido. Além disso, há cenários em que itens são 
+devolvidos sem que haja uma solicitação prévia registrada.
+
+Diante disso, foi necessário adotar a seguinte estratégia:
+
+- Utilizar a tabela de movimentações, filtrando pelos registros com status de devolução;
+- Para as solicitações, realizar um relacionamento indireto (de/para) com base na data, código do item 
+  e paciente, considerando se houve solicitação de devolução para aquele item dentro do período analisado.
+
+Por fim, foram utilizadas CTEs (Common Table Expressions) para organizar a lógica, 
+melhorar a legibilidade e tornar a query mais performática e dinâmica.
+*/
+
+
+
+
+SET DATEFORMAT DMY;
+
+WITH Mov AS (
+    SELECT
+        A.IDAdmissionSource      AS CapAdmission,
+        A.SCMaterial             AS IDMaterial,
+        SUM(A.Quantity)          AS QuantidadeDevol,
+        MAX(A.UnitCost)          AS Custo,
+        MAX(A.MovDate)           AS DtMovimentacao,
+        E.ID                     AS IDUnidade,
+        D.ATTENDANCEPROGRAM      AS Programaatencao,
+        A.IDPrescription         AS Prescricao
+
+    FROM MatMaterialMov A
+    INNER JOIN CapPrescription L ON L.ID = A.IDPrescription
+    INNER JOIN CapAdmission D    ON D.ID = A.IDAdmissionSource
+    INNER JOIN GlbHealthProvider E ON E.ID = D.IDHealthProvider
+    WHERE A.MovDate BETWEEN '$P{Inicio}' AND '$P{Fim}'
+      AND (A.IDAdmissionSource = $P{Paciente} OR $P{Paciente} = 0)
+      AND (E.ID = $P{Unidade} OR $P{Unidade} = 0)
+      AND (MovType = 15)
+    GROUP BY
+        A.IDAdmissionSource,
+        A.SCMaterial,
+        E.ID,
+        D.ATTENDANCEPROGRAM,
+		A.IDPrescription
+),
+
+Dev AS (
+    SELECT
+        A.IDAdmission            AS CapAdmission,
+        A.SCMaterial             AS IDMaterial,
+        SUM(A.RetrieveQuantity)  AS QtdDevolvido,
+        MAX(A.CreationDate)      AS DtDevolucao,
+        E.ID                     AS IDUnidade,
+        E.Name                   AS NomeUnidade,
+        D.ATTENDANCEPROGRAM      AS Programaatencao,
+        A.Comments		  AS Observacao
+    FROM MatDevolution A
+    INNER JOIN CapAdmission D ON D.ID = A.IDAdmission
+    INNER JOIN GlbHealthProvider E ON E.ID = D.IDHealthProvider
+    WHERE A.CreationDate BETWEEN '$P{Inicio}' AND '$P{Fim}'
+      AND (A.IDAdmission = $P{Paciente} OR $P{Paciente} = 0)
+      AND (E.ID = $P{Unidade} OR $P{Unidade} = 0)
+      AND (A.Comments not like 'CANCELADO')
+    GROUP BY
+        A.IDAdmission,
+        A.SCMaterial,
+        E.ID,
+        E.Name,
+        D.ATTENDANCEPROGRAM,
+        A.Comments
+),
+
+CI AS (
+    SELECT
+        ID_CI,
+        IDPACIENTE,
+        IDTIPOCI,
+        MOTIVO_CI,
+        IDUnidade,
+        NomeUnidade,
+        Programaatencao
+    FROM (
+        SELECT
+            A.ID                     AS ID_CI,
+            A.IDReference            AS IDPACIENTE,
+            C.KeyIndex               AS IDTIPOCI,
+            CASE
+                WHEN A.TIPO = 3 THEN C.Translation
+                ELSE B.Translation
+            END                      AS MOTIVO_CI,
+            E.ID                     AS IDUnidade,
+            E.Name                   AS NomeUnidade,
+            D.ATTENDANCEPROGRAM      AS Programaatencao,
+            ROW_NUMBER() OVER (
+                PARTITION BY A.IDReference
+                ORDER BY A.EventDate DESC, A.ID DESC
+            ) AS RN
+        FROM TD_CIIW A
+        INNER JOIN IfrConstantItem B
+            ON B.IDConstant = 1061
+           AND B.KeyIndex = A.MOTIVO_DE_ALTA
+        INNER JOIN IfrConstantItem C
+            ON C.IDConstant = 1064
+           AND C.KeyIndex = A.TIPO
+        INNER JOIN CapAdmission D
+            ON D.ID = A.IDReference
+        INNER JOIN GlbHealthProvider E
+            ON E.ID = D.IDHealthProvider
+        WHERE A.TIPO IN (2,3)
+          AND (A.IDReference = $P{Paciente} OR $P{Paciente} = 0)
+          AND (E.ID = $P{Unidade} OR $P{Unidade} = 0)
+    ) X
+    WHERE RN = 1
+),
+
+CTE AS (
+    SELECT
+        X.Item,
+        X.Custo,
+        X.Preco,
+        X.IDPACIENTE,
+        X.RN,
+        X.IDUnidade,
+        X.NomeUnidade,
+        X.Programaatencao
+    FROM (
+        SELECT
+            b.SCResource           AS Item,
+            b.UnitCost             AS Custo,
+            b.UnitPrice            AS Preco,
+            a.IDAdmission          AS IDPACIENTE,
+            ROW_NUMBER() OVER (
+                PARTITION BY b.SCResource, a.IDAdmission
+                ORDER BY a.ID DESC
+            )                      AS RN,
+            E.ID                   AS IDUnidade,
+            E.Name                 AS NomeUnidade,
+            D.ATTENDANCEPROGRAM    AS Programaatencao
+
+        FROM CapBudget a
+        INNER JOIN CapBudgetItem b ON b.IDBudget = a.ID
+        INNER JOIN CapAdmission D ON D.ID = a.IDAdmission
+        INNER JOIN GlbHealthProvider E ON E.ID = D.IDHealthProvider
+        WHERE a.StartDate BETWEEN '$P{Inicio}' AND '$P{Fim}'
+          AND (a.IDAdmission = $P{Paciente} OR $P{Paciente} = 0)
+          AND (E.ID = $P{Unidade} OR $P{Unidade} = 0)
+    ) X
+    WHERE X.RN = 1
+)
+
+SELECT
+    COALESCE(M.CapAdmission, D.CapAdmission) AS CapAdmission,
+    W.Name				    AS PacienteName,
+    ISNULL(Q.MOTIVO_CI, '')                  AS MotivoCI,
+    U.ID                                    AS IDUnidade,
+    U.Name                                  AS Unidade,
+    M.DtMovimentacao                        AS DtMovimentacao,
+    S.KeyIndex                              AS IDProgramaAtencao,
+    S.Translation                           AS ProgramaAtencao,
+    C.ID                                    AS IDMaterial,
+    C.CodeName                              AS SCMaterialName,
+    CAST(ISNULL(M.Custo,0) AS DECIMAL(10,2)) AS CustoDevol,
+    ISNULL(M.QuantidadeDevol,0)             AS QuantidadeDevol,
+    CAST(ISNULL(M.QuantidadeDevol,0) * ISNULL(M.Custo,0) AS DECIMAL(10,2)) AS VlrTotalDevolucao,
+    CAST(CASE WHEN ISNULL(M.Custo,0) <> 0 THEN M.Custo ELSE ISNULL(R.Custo,0) END     AS DECIMAL(10,2)) AS CustoDevolvido,
+    ISNULL(D.QtdDevolvido,0)                AS QtdDevolvido,
+    CAST(ISNULL(D.QtdDevolvido,0) * CASE WHEN ISNULL(M.Custo,0) <> 0 THEN M.Custo ELSE ISNULL(R.Custo,0) END AS DECIMAL(10,2)) AS VlrTotalDevolvido,
+    P.Name                                  AS CategMaterial,
+    P.ID                                    AS IDCategMaterial,
+    X.ID									AS IDOperadora,
+    X.Name									AS Operadora,
+	M.Prescricao                            AS IDPrescricao
+
+
+
+FROM Mov M
+FULL OUTER JOIN Dev D
+    ON M.CapAdmission = D.CapAdmission
+   AND M.IDMaterial = D.IDMaterial
+INNER JOIN SccCode C
+    ON C.ID = COALESCE(M.IDMaterial, D.IDMaterial)
+LEFT JOIN SccTable P ON P.ID = C.IDTable
+LEFT JOIN CI Q ON Q.IDPACIENTE = COALESCE(M.CapAdmission, D.CapAdmission)
+LEFT JOIN CTE R
+    ON R.Item = D.IDMaterial
+   AND R.IDPACIENTE = D.CapAdmission
+INNER JOIN CapAdmission T
+    ON T.ID = COALESCE(M.CapAdmission, D.CapAdmission)
+LEFT JOIN IfrConstantItem S
+    ON S.IDConstant = 327
+   AND S.KeyIndex = T.ATTENDANCEPROGRAM
+INNER JOIN GlbHealthProvider U
+    ON U.ID = COALESCE(R.IDUnidade, Q.IDUnidade, D.IDUnidade, M.IDUnidade)
+Inner join GlbPatient V on ( T.IDPatient = V.ID )
+Inner join GlbPerson W on ( V.IDPerson = W.ID )
+Inner join GlbEnterprise X on ( X.ID = T.IDEnterprise )
+
+WHERE
+    (ISNULL(M.QuantidadeDevol,0) <> 0
+ OR ISNULL(D.QtdDevolvido,0) <> 0)
+ AND (Q.IDTIPOCI = $P{ProgramaAtencao} OR $P{ProgramaAtencao} = 0)
+ AND (X.ID = $P{Convenio} OR $P{Convenio} = 0)
+
+ORDER BY
+    Unidade,  PacienteName, CapAdmission, CategMaterial, IDMaterial, MotivoCI;
+
+
+
