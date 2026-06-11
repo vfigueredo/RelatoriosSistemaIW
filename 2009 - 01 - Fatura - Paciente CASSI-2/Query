@@ -1,0 +1,129 @@
+set dateformat dmy;
+
+select a.IDHEALTHPROVIDER, a.Unidade, a.IDEnterprise, a.Conta, a.Inicio, a.Fim, a.Senha, a.BUDGETDAYS, a.seq, a.resourcetype, a.scresource, a.Item_Interno, a.SCCodeRefer,
+	   a.quantity Qtd, a.mu, a.coveragequantity qtd_inclusa,  a.unitprice, a.discountitem, a.discount, a.Tipo, a.Fator, a.Empresa,
+	   a.Atendimento, a.Prontuario, a.Paciente, a.Matricula, a.Plano, a.scdiagnostico, a.diagnostico, a.IDCID_Admissao, a.CID_Admissao,  a.MotivoAlta, a.Servico, a.Nascimento, a.InicioAtendimento,
+	   a.CodTUSS, a.CodTiss, a.CodBrasind, a.CodOPeradora, a.Descricao_Map, a.SCComplexityLevel, a.TabelaDominio, a.codigo_relatorio,
+
+	   case	when Mapeamentos2.Descricao_Map is not null then Mapeamentos2.Descricao_Map
+						when a.Item_Interno is null and CodTUSS is not null then a.Item_Interno
+						when a.Item_Interno is null and CodTUSS is null and CodTiss is not null then a.Item_Interno
+						else a.Item_relatorio
+				end Item_relatorio,
+
+	   a.Observacao,
+	   CONVERT(MONEY, unitprice)ValorUnitario,
+       CONVERT(MONEY, discount) Desconto,
+       CONVERT(MONEY, (((quantity - coveragequantity) * unitprice )* (discountitem / 100))) DescontoItem
+       ,Sum(CONVERT(MONEY,((quantity - coveragequantity ) * unitprice) - (((quantity - coveragequantity ) * unitprice) * (discountitem / 100 ) ))) Vlr_Cobrar
+	   , Total_conta.Total
+FROM (
+		select  d.IDHEALTHPROVIDER, p.name Unidade, d.IDEnterprise, a.id Conta, CONVERT(VARCHAR, a.startdate, 103) Inicio, CONVERT(VARCHAR, a.enddate, 103) Fim,
+                a.authorizextcode Senha,  Datediff(day, a.startdate, a.enddate) + 1 Dias,datediff(day,a.startdate, a.enddate)+1 BUDGETDAYS, b.seq, b.resourcetype, b.scresource ,
+			    g.codename Item_Interno, b.SCCodeRefer, b.quantity, b.coveragequantity, b.unitprice, b.discountitem, b.discount, b.mu,
+				CASE  WHEN b.resourcetype = 12 THEN 'Consultas Domiciliares'
+					  WHEN b.resourcetype = 14 THEN 'Diarias de Home Care'
+					  ELSE j.NAME
+       			end Tipo,
+				CASE  WHEN h.mufactor IS NULL THEN '1' ELSE h.mufactor END Fator, l.name Empresa,
+			   d.id Atendimento, d.idpatient Prontuario, cc.name Paciente, d.CarePlanRegister Matricula, d.careplancategory Plano, CONVERT(VARCHAR, d.checkindate, 103) InicioAtendimento,
+			   CONVERT(VARCHAR, cc.birthday, 103) Nascimento, k.codename scdiagnostico, d.diagnostic diagnostico, k.alternatename IDCID_Admissao, k.codename CID_Admissao,
+			    m.translation MotivoAlta, o.translation Servico,
+			   CodTUSS, CodTiss, CodBrasind, b.ExternalCode CodOPeradora, Mapeamentos.Descricao_Map, Mapeamentos.SCComplexityLevel, Mapeamentos.TabelaDominio,
+			   case when b.ExternalCode is not null then  convert(varchar,b.ExternalCode)
+					when b.ExternalCode is null and CodTUSS is not null then convert(varchar,CodTUSS)
+					when b.ExternalCode is null and CodTUSS is null and CodTiss is not null then convert(varchar,CodTiss)
+					else convert(varchar,b.scresource)
+				end codigo_relatorio,
+				case when b.ExternalCode is not null and  Mapeamentos.Descricao_Map is not null then Mapeamentos.Descricao_Map
+					 when b.ExternalCode is null and CodTUSS is not null then ItemTabPreco
+					 when b.ExternalCode is null and CodTUSS is null and CodTiss is not null then ItemTabPreco
+					else upper(g.codename)
+				end Item_relatorio,
+				Case when b.ExternalCode is not null then 'Item de Origem de Mapeamento Cód. TISS Operadora e\ou Tabela Própria'
+					 when CodigoTabPreco is not null then 'Item de Origem de Tabela de Preço: '+Codigos.TabPreco
+					 else 'Item de Origem de Tabela de Preço: '+f.name
+				end Observacao
+
+
+		from cappayment a (nolock)
+			 join cappaymentitem b (nolock) on (b.idpayment = a.id  and b.resourcetype in (0,1,2,3, 4,5,6,7,8,10,11,12,13,14,16,17,18,19,20,21,22,23))
+			 join capadmission d (nolock) on (d.id = a.idadmission)
+			 join glbpatient bb (nolock) on (bb.id = d.idpatient)
+			 join glbperson cc (nolock) on (cc.id = bb.idperson)
+			 join glbenterprise l (nolock) on (l.id = d.identerprise)
+			 join scccode g (nolock) on (g.id = b.scresource)
+			 left join ctrpricelstversion e (nolock) on (e.id = b.idpricelstversion)
+			 left join ctrpricelist f (nolock) on (f.id = e.idpricelist)
+			 left join scccode k (nolock) on (k.id = d.SCDiagnostic1)
+			 left join ifrconstantitem m (nolock)  on (m.idconstant = 19 and m.keyindex = d.checkoutcond )
+			 left join ifrconstantitem o (nolock)  on (o.idconstant = 160 and o.keyindex = d.idhealthprovdep )
+			 join glbhealthprovider p (nolock) on (p.id = d.idhealthprovider)
+			 join scctable j (nolock) ON (j.id = g.idtable)
+			 left join matmaterialtype h (nolock) on (h.scmaterial = b.scresource)
+			 left join (select cc.id IDItem, cc.IDPayment Conta, d.id IDPriceList, d.name TabPreco, cc.scresource CodigoInterno, cc.SCCodeRefer CodigoTabPreco,
+							Upper(b.codename) ItemTabPreco,  a.CodTUSS, c.CodBrasind,
+							case when f.idpricelist in (512,837) then c.CodTiss  when f.idpricelist in (2) then b.AlternateName end CodTiss
+					 from  cappaymentitem cc (nolock) left join tdtusscoderefer a (nolock) on (cc.SCCodeRefer = a.SCCode and cc.idpricelstversion is not null)
+													  left join scccode b (nolock) on (b.id = cc.SCCodeRefer)
+													  left join tdtissbrasindice c (nolock) on (c.CodBrasind = b.AlternateName)
+													  join ctrpricelstversion f (nolock) on (f.id = cc.idpricelstversion)
+													  join ctrpricelist d (nolock) on (d.id = (case when a.IDPriceList is null then f.IDPriceList else a.IDPriceList end))
+
+					where
+							  d.id  in  (512,837,2)
+
+					union all
+					select distinct c.id IDItem, c.IDPayment Conta, d.id IDPriceList, d.name TabPreco,
+						   c.scresource CodigoInterno, case when a.SCCode is null then c.sccoderefer else a.SCCode end  CodigoTabPreco,
+						   Upper(b.codename) ItemTabPreco,  a.CodTUSS, null CodBrasind, b.AlternateName CodTiss
+					from CtrSCCodeRefer e (nolock) left join  tdtusscoderefer a (nolock) on (a.SCCode = e.SCCodeRefer)
+													   left join scccode b (nolock) on (b.id = case when a.SCCode is null then e.sccoderefer else a.SCCode end)
+													   join cappaymentitem c (nolock) on (c.SCCodeRefer = e.SCCodeRefer and c.idpricelstversion is not null)
+
+													   join ctrpricelstversion f (nolock) on (f.id = c.idpricelstversion)
+													   left join ctrpricelist d (nolock) on (d.id = (case when a.IDPriceList is null then f.IDPriceList else a.IDPriceList end))
+					where
+							d.id not in (512,837,2)
+
+					) Codigos on (Codigos.conta = a.id and b.id = Codigos.IDItem and codigos.CodigoTabPreco = b.SCCodeRefer and Codigos.IDPriceList = f.ID)
+
+			 left join (select IDHEALTHPROVIDER,  IDEnterprise, SCComplexityLevel, SCCode, ExternalCode, upper(Description) Descricao_Map, TableCode TabelaDominio
+						from ctrbillingcoderef (nolock)
+					   ) Mapeamentos on (Mapeamentos.IDHEALTHPROVIDER = d.IDHEALTHPROVIDER and Mapeamentos.IDEnterprise = d.IDEnterprise and Mapeamentos.SCCode = b.scresource
+										 and Mapeamentos.ExternalCode = (case when  b.ExternalCode is null then null else b.ExternalCode end )
+										 and Mapeamentos.SCComplexityLevel = (case when  b.ExternalCode is null then null else b.SCComplexityLevel end )
+										 )
+		WHERE (b.quantity - b.coveragequantity ) * b.unitprice > 0
+		) a
+	 JOIN (SELECT y.idpayment conta, CONVERT(MONEY,(Sum(((y.quantity - y.coveragequantity) * y.unitprice) - (((y.quantity - y.coveragequantity) * y.unitprice) * (y.discountitem / 100))))) Total
+		   FROM cappayment x (nolock) JOIN cappaymentitem y (nolock) ON (y.idpayment = x.id )
+		   WHERE (y.quantity - y.coveragequantity ) * y.unitprice > 0
+		   GROUP  BY y.idpayment
+		  ) Total_conta on (Total_conta.conta = a.Conta)
+
+		left join (select IDHEALTHPROVIDER,  IDEnterprise, SCComplexityLevel, SCCode, ExternalCode, upper(Description) Descricao_Map, TableCode TabelaDominio
+	             from ctrbillingcoderef (nolock)
+	           ) Mapeamentos2 on (
+			   ---Mapeamentos.IDHEALTHPROVIDER = a.IDUnidade
+								 --and
+								 Mapeamentos2.IDEnterprise = a.IDEnterprise
+								 and Mapeamentos2.SCCode = a.scresource
+								 and Mapeamentos2.ExternalCode = (case when a.CodOPeradora is not null and Mapeamentos2.SCComplexityLevel = a.SCComplexityLevel then CONVERT(VARCHAR,a.CodOPeradora)
+																				 when a.CodOPeradora is not null and Mapeamentos2.SCComplexityLevel is null then CONVERT(VARCHAR,a.CodOPeradora)
+																				 when a.CodOPeradora is null and Mapeamentos2.ExternalCode is not null then Mapeamentos2.ExternalCode
+																			end
+																			)
+
+								 --and Mapeamentos.ExternalCode = (case when a.CodOPeradora is null then null else a.CodOPeradora end)
+								 --and Mapeamentos.SCComplexityLevel = (case when  a.CodOPeradora is null then complexidade.id else a.SCComplexityLevel end )
+							   )
+
+
+where
+	a.Conta  = $P{IDPAYMENT}
+
+group by a.IDHEALTHPROVIDER, a.Unidade, a.IDEnterprise, a.Conta, a.Inicio, a.Fim, a.Senha, a.BUDGETDAYS, a.seq, a.resourcetype, a.scresource, a.Item_Interno, a.SCCodeRefer,
+	   a.quantity, a.mu, a.coveragequantity,  a.unitprice, a.discountitem, a.discount, a.Tipo, a.Fator, a.Empresa, a.Atendimento, a.Prontuario, a.Paciente, a.Matricula, a.Plano,
+	   a.scdiagnostico, a.diagnostico, a.IDCID_Admissao, a.CID_Admissao,  a.MotivoAlta, a.Servico, a.Nascimento, a.InicioAtendimento, a.CodTUSS, a.CodTiss, a.CodBrasind,
+	   a.CodOPeradora,  a.Descricao_Map, a.SCComplexityLevel, a.TabelaDominio, a.codigo_relatorio, a.Item_relatorio, a.Observacao, Total_conta.Total, Mapeamentos2.Descricao_Map
