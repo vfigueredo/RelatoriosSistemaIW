@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Detalhamento dos Serviços Prestados por Profissional" language="groovy" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<parameter name="IDPROFESSIONAL" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA[$F{IDPROFESSIONAL}]]></defaultValueExpression>
+	</parameter>
+	<field name="ID" class="java.lang.Long"/>
+	<field name="IDFINANCIALDOC" class="java.lang.Long"/>
+	<field name="IDADMISSION" class="java.lang.Long"/>
+	<field name="IDPROFESSIONAL" class="java.lang.Long"/>
+	<field name="IDENTERPRISE" class="java.lang.Long"/>
+	<field name="IDPRICELSTVERSION" class="java.lang.Long"/>
+	<field name="IDCONSFREQUENCY" class="java.lang.Long"/>
+	<field name="SCSPECIALITY" class="java.lang.Long"/>
+	<field name="SCSHIFTTYPE" class="java.lang.Long"/>
+	<field name="ATTENDANCEPROGRAM" class="java.lang.Integer"/>
+	<field name="BILLTYPE" class="java.lang.String">
+		<property name="TYPE" value="#IWCONSTANT"/>
+		<property name="CONSTANT_NAME" value="K_CAP_PROF_BILLTYPE"/>
+	</field>
+	<field name="BILLTYPE_#INDEX" class="java.lang.Integer"/>
+	<field name="BILLEXPURGATE" class="java.lang.String">
+		<property name="TYPE" value="#IWCONSTANT"/>
+		<property name="CONSTANT_NAME" value="K_GLB_YESNO"/>
+	</field>
+	<field name="BILLEXPURGATE_#INDEX" class="java.lang.Integer"/>
+	<field name="PAYPROFESSIONAL" class="java.lang.Integer"/>
+	<field name="PRICELEVEL" class="java.lang.String">
+		<property name="TYPE" value="#IWCONSTANT"/>
+		<property name="CONSTANT_NAME" value="K_CTR_PROF_PRICELEVEL"/>
+	</field>
+	<field name="PRICELEVEL_#INDEX" class="java.lang.Integer"/>
+	<field name="GENDER" class="java.lang.String">
+		<property name="TYPE" value="#IWCONSTANT"/>
+		<property name="CONSTANT_NAME" value="K_GLB_GENDER"/>
+	</field>
+	<field name="GENDER_#INDEX" class="java.lang.Integer"/>
+	<field name="REGISTRYTYPE" class="java.lang.String">
+		<property name="TYPE" value="#IWCONSTANT"/>
+		<property name="CONSTANT_NAME" value="K_GLB_REGISTRY_TYPE"/>
+	</field>
+	<field name="REGISTRYTYPE_#INDEX" class="java.lang.Integer"/>
+	<field name="PROGRAMMEDSTART" class="java.util.Date"/>
+	<field name="PROGRAMMEDEND" class="java.util.Date"/>
+	<field name="REALIZEDSTART" class="java.util.Date"/>
+	<field name="REALIZEDEND" class="java.util.Date"/>
+	<field name="PRICE" class="java.lang.Double"/>
+	<field name="DISCOUNT" class="java.lang.Double"/>
+	<field name="CHARGEVALUE" class="java.lang.Double"/>
+	<field name="UNITPRICE" class="java.lang.Double"/>
+	<field name="AMOUNT" class="java.lang.Double"/>
+	<field name="PROFPROVRATE" class="java.lang.Double"/>
+	<field name="OWNERVEHICLERATE" class="java.lang.Double"/>
+	<field name="FACTOR" class="java.lang.Double"/>
+	<field name="TAXES" class="java.lang.Double"/>
+	<field name="BONIFICATION" class="java.lang.Double"/>
+	<field name="TRANSPORTREIMBURSE" class="java.lang.Double"/>
+	<field name="PATIENTAGE" class="java.lang.String"/>
+	<field name="PATIENTNAME" class="java.lang.String"/>
+	<field name="PROFESSIONALNAME" class="java.lang.String"/>
+	<field name="REGISTRYNUMBER" class="java.lang.String"/>
+	<field name="REGISTRYPROFPROV" class="java.lang.String"/>
+	<field name="SCSPECIALITYNAME" class="java.lang.String"/>
+	<field name="SCSHIFTTYPENAME" class="java.lang.String"/>
+	<field name="PRICELISTNAME" class="java.lang.String"/>
+	<field name="PRICELSTVERSIONNAME" class="java.lang.String"/>
+	<field name="PERSONALENTERPNAME" class="java.lang.String"/>
+	<field name="COMMENTS" class="java.lang.String"/>
+	<variable name="PATIENTNAME_1" class="java.lang.Integer" resetType="Group" resetGroup="Paciente" calculation="Count">
+		<variableExpression><![CDATA[$F{PATIENTNAME}]]></variableExpression>
+	</variable>
+	<variable name="PATIENTNAME_1_1" class="java.lang.Integer" resetType="Group" resetGroup="Profissional" calculation="Count">
+		<variableExpression><![CDATA[$F{PATIENTNAME}]]></variableExpression>
+	</variable>
+	<variable name="PRICE_1" class="java.lang.Double" resetType="Group" resetGroup="Profissional" calculation="Sum">
+		<variableExpression><![CDATA[$F{PRICE}]]></variableExpression>
+	</variable>
+	<variable name="PRICE_1_1" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{PRICE}]]></variableExpression>
+	</variable>
+	<group name="Profissional">
+		<groupExpression><![CDATA[$F{PROFESSIONALNAME}]]></groupExpression>
+		<groupHeader>
+			<band height="72">
+				<textField isStretchWithOverflow="true" pattern="">
+					<reportElement stretchType="RelativeToBandHeight" x="0" y="10" width="554" height="14" isPrintWhenDetailOverflows="true"/>
+					<textElement verticalAlignment="Middle" markup="html">
+						<font size="10" isBold="true"/>
+					</textElement>
+					<textFieldExpression class="java.lang.String"><![CDATA["Profissional: "  +  $F{PROFESSIONALNAME}]]></textFieldExpression>
+				</textField>
+				<staticText>
+					<reportElement x="0" y="56" width="454" height="16"/>
+					<box>
+						<bottomPen lineWidth="1.0"/>
+					</box>
+					<textElement verticalAlignment="Middle">
+						<font size="12" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Paciente]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="454" y="56" width="100" height="16"/>
+					<box>
+						<bottomPen lineWidth="1.0"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font size="12" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Visitas]]></text>
+				</staticText>
+				<textField isStretchWithOverflow="true" pattern="">
+					<reportElement stretchType="RelativeToBandHeight" x="0" y="24" width="554" height="14" isPrintWhenDetailOverflows="true"/>
+					<textElement verticalAlignment="Middle" markup="html">
+						<font size="10"/>
+					</textElement>
+					<textFieldExpression class="java.lang.String"><![CDATA["Conselho:" + $F{REGISTRYTYPE} +" / Registro:  " + $F{REGISTRYNUMBER}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" pattern="">
+					<reportElement stretchType="RelativeToBandHeight" x="1" y="38" width="60" height="14" isPrintWhenDetailOverflows="true"/>
+					<textElement verticalAlignment="Middle" markup="html">
+						<font size="10"/>
+					</textElement>
+					<textFieldExpression class="java.lang.String"><![CDATA["Matrícula:"]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" pattern="">
+					<reportElement stretchType="RelativeToBandHeight" x="61" y="38" width="493" height="14" isPrintWhenDetailOverflows="true"/>
+					<textElement verticalAlignment="Middle" markup="html">
+						<font size="10"/>
+					</textElement>
+					<textFieldExpression class="java.lang.String"><![CDATA[($F{REGISTRYPROFPROV}==null)?"":"--"]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupHeader>
+		<groupFooter>
+			<band height="36">
+				<textField>
+					<reportElement x="455" y="0" width="100" height="16"/>
+					<box>
+						<topPen lineWidth="1.0"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font size="10" isBold="true"/>
+					</textElement>
+					<textFieldExpression class="java.lang.Integer"><![CDATA[$V{PATIENTNAME_1_1}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="1" y="0" width="454" height="16"/>
+					<box>
+						<topPen lineWidth="1.0"/>
+					</box>
+					<textElement verticalAlignment="Middle" markup="none">
+						<font size="10" isBold="true"/>
+					</textElement>
+					<textFieldExpression class="java.lang.String"><![CDATA["Total de visitas:"]]></textFieldExpression>
+				</textField>
+				<textField pattern="¤ #,##0.00">
+					<reportElement x="455" y="20" width="101" height="16"/>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font size="10" isBold="true"/>
+					</textElement>
+					<textFieldExpression class="java.lang.Double"><![CDATA[$V{PRICE_1}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="1" y="20" width="454" height="16"/>
+					<textElement verticalAlignment="Middle" markup="html">
+						<font size="10" isBold="true"/>
+					</textElement>
+					<textFieldExpression class="java.lang.String"><![CDATA["Total a receber do profissional:<font color = FF0000>"+$F{PROFESSIONALNAME}+"</font>"]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupFooter>
+	</group>
+	<group name="Paciente">
+		<groupExpression><![CDATA[$F{PATIENTNAME}]]></groupExpression>
+		<groupFooter>
+			<band height="14">
+				<textField>
+					<reportElement x="1" y="0" width="454" height="14"/>
+					<box>
+						<topPen lineWidth="0.25"/>
+						<bottomPen lineWidth="0.25"/>
+					</box>
+					<textElement verticalAlignment="Middle">
+						<font size="8"/>
+					</textElement>
+					<textFieldExpression class="java.lang.String"><![CDATA[$F{PATIENTNAME}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="455" y="0" width="101" height="14"/>
+					<box>
+						<topPen lineWidth="0.25"/>
+						<bottomPen lineWidth="0.25"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.lang.Integer"><![CDATA[$V{PATIENTNAME_1}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupFooter>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="67" splitType="Stretch">
+			<rectangle>
+				<reportElement x="428" y="2" width="126" height="65"/>
+			</rectangle>
+			<rectangle>
+				<reportElement x="162" y="2" width="266" height="65"/>
+			</rectangle>
+			<staticText>
+				<reportElement x="441" y="6" width="100" height="20"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Impresso em:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="441" y="58" width="100" height="9"/>
+				<textElement textAlignment="Center">
+					<font size="6"/>
+				</textElement>
+				<text><![CDATA[Rel.1888]]></text>
+			</staticText>
+			<rectangle>
+				<reportElement x="1" y="2" width="161" height="65"/>
+			</rectangle>
+			<textField pattern="dd/MM/yyyy h.mm a">
+				<reportElement x="435" y="37" width="115" height="22"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="false"/>
+				</textElement>
+				<textFieldExpression class="java.util.Date"><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<image onErrorType="Blank">
+				<reportElement x="9" y="5" width="149" height="61">
+					<property name="TYPE" value="#IMAGE_FROM_DATABASE"/>
+				</reportElement>
+				<imageExpression class="java.lang.String"><![CDATA["9527"]]></imageExpression>
+			</image>
+			<staticText>
+				<reportElement x="163" y="5" width="265" height="61"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="22" isBold="true" isStrikeThrough="false"/>
+				</textElement>
+				<text><![CDATA[Detalhamento dos Serviços
+Prestados por Profissional]]></text>
+			</staticText>
+		</band>
+	</title>
+	<pageFooter>
+		<band height="12" splitType="Stretch">
+			<textField evaluationTime="Report">
+				<reportElement x="252" y="0" width="302" height="12"/>
+				<box>
+					<topPen lineWidth="1.0"/>
+				</box>
+				<textElement>
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[" " + $V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="0" width="252" height="12"/>
+				<box>
+					<topPen lineWidth="1.0"/>
+				</box>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Página "+$V{PAGE_NUMBER}+" de"]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageFooter>
+	<summary>
+		<band height="24">
+			<textField pattern="¤ #,##0.00">
+				<reportElement x="455" y="8" width="101" height="16"/>
+				<box>
+					<topPen lineWidth="1.0"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font size="10" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.Double"><![CDATA[$V{PRICE_1_1}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="1" y="8" width="454" height="16"/>
+				<box>
+					<topPen lineWidth="1.0"/>
+				</box>
+				<textElement verticalAlignment="Middle" markup="html">
+					<font size="10" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Total a pagar"]]></textFieldExpression>
+			</textField>
+		</band>
+	</summary>
+</jasperReport>

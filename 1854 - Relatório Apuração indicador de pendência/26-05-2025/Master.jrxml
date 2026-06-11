@@ -1,0 +1,695 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Master" language="groovy" pageWidth="842" pageHeight="595" orientation="Landscape" whenNoDataType="NoDataSection" columnWidth="802" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<parameter name="Inicio" class="java.lang.String">
+		<property name="LABEL" value="Data Inicio"/>
+		<property name="TYPE" value="#DATE"/>
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="Fim" class="java.lang.String">
+		<property name="LABEL" value="Data Fim"/>
+		<property name="TYPE" value="#DATE"/>
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="Unidade" class="java.lang.String">
+		<property name="TYPE" value="#SQL"/>
+		<property name="SQL_COMMAND" value="select keyindex ID, translation Name from ifrconstantitem where idconstant = 680 and keyindex not in (0,3,4) order by name"/>
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<queryString>
+		<![CDATA[set dateformat dmy;
+
+declare @data_inicio datetime, @data_fim datetime
+set @data_inicio = $P{Inicio}
+set @data_fim  = $P{Fim}
+
+select k.keyindex IDUnidade, k.translation UnidadeOp, a.*
+from (
+
+		select a.*, bb.data_processamento, bb.mes2, bb.ano2, bb.NumSolicatçoes
+		from (Select aa.*,convert(varchar,DTLIBERACAO,103) Liberação,convert(varchar,inicioprescricao,103) Inicio,  convert(varchar,fimprescricao,103) Fim,
+					convert(varchar,DATAREGISTRO,103) Registro, p.idhealthprovider
+			  from relatorios.dbo.Indicador_Pend_Prod_Presc_Por_Item aa join dbiwsosvida.dbo.capprescription m (nolock) on (aa.numprescricao = m.id)
+																		/* apoio para consulta unidade operacional*/
+																		join dbiwsosvida.dbo.capadmission n (nolock) on (n.id = m.idadmission)
+																		join dbiwsosvida.dbo.glbpatient o (nolock) on (o.id = n.idpatient)
+																		join dbiwsosvida.dbo.glbperson p (nolock) on (p.id = o.idperson)
+			  Where
+				inicioprescricao between @data_inicio+' 00:00:00' and @data_fim+' 23:59:59'
+				and not exists (select 1
+							    from relatorios.dbo.Indicador_Pend_Prod_Presc_Por_Item_Cancelamentos
+							    where
+									idprescription = aa.numprescricao and scmaterial = aa.codscc
+							   )
+		) a,
+
+		  (select convert(char(10),getdate(),103) data_processamento, month(getdate()) mes2, year(getdate()) ano2, count(*) NumSolicatçoes,
+				  p.idhealthprovider idhealthprovider
+		  from dbiwsosvida.dbo.matmaterialmov a left join dbiwsosvida.dbo.matmaterialtype c on (c.scmaterial = a.scmaterial)
+												left join dbiwsosvida.dbo.scccode d on (d.id = a.scmaterial)
+												left join dbiwsosvida.dbo.matmaterial e on (e.id = a.idmaterial)
+												left join dbiwsosvida.dbo.matstoragearea f on (f.id = a.idstoareasource)
+												left join dbiwsosvida.dbo.scccode g on (g.id = a.scaddresssource)
+												left join dbiwsosvida.dbo.matstoragearea h on (h.id = a.idstoareadest)
+												left join dbiwsosvida.dbo.scccode i on (i.id = a.scaddressdest)
+												left join dbiwsosvida.dbo.capprescripitem j on (j.id = a.idprescripitem)
+												left join dbiwsosvida.dbo.sccalternate l on (l.id = a.idalternate)
+												join dbiwsosvida.dbo.matresupply b (nolock) on (b.id = a.idresupply)
+												join dbiwsosvida.dbo.capprescription m (nolock) on (a.idprescription = m.id)
+												/* apoio para consulta unidade operacional*/
+												join dbiwsosvida.dbo.capadmission n (nolock) on (n.id = m.idadmission)
+												join dbiwsosvida.dbo.glbpatient o (nolock) on (o.id = n.idpatient)
+												join dbiwsosvida.dbo.glbperson p (nolock) on (p.id = o.idperson)
+
+		  where
+			m.id in (select id
+						 from dbiwsosvida.dbo.capprescription
+						 where
+							--convert(char(10),getdate(),103) = convert(char(10),startdate,103)
+							StartDate between @data_inicio+' 00:00:00' and @data_fim+' 23:59:59'
+							and nursingliberation is not null) --Considera todas as prescrições iniciadas no dia da execução da rotina
+			and datepart(dw,m.startdate) > 1 --desconsidera os domingos
+			and not (b.emergency > 0 and datepart(hour,nursingliberation) >= 19) --desconsidera todas as prescrições que não sejam periódicas e que tenham sido liberadas após as 19 horas
+			and not exists (select 1
+							from relatorios.dbo.Indicador_Pend_Prod_Presc_Por_Item_Cancelamentos
+							where
+								idprescription = a.idprescription
+								and scmaterial = a.scmaterial
+						   )
+		group by  p.idhealthprovider
+		) bb
+
+	where
+		a.idhealthprovider = bb.idhealthprovider
+
+	union all
+
+		select a.*, bb.data_processamento, bb.mes2, bb.ano2, bb.NumSolicatçoes
+		from (Select aa.*,convert(varchar,DTLIBERACAO,103) Liberação,convert(varchar,inicioprescricao,103) Inicio,  convert(varchar,fimprescricao,103) Fim,
+					convert(varchar,DATAREGISTRO,103) Registro, 6 idhealthprovider
+			  from relatorios.dbo.Indicador_Pend_Prod_Presc_Por_Item_AJU aa join dbiwsosvidaAracajuUnificado.dbo.capprescription m (nolock) on (aa.numprescricao = m.id)
+																			/* apoio para consulta unidade operacional*/
+																			join dbiwsosvidaAracajuUnificado.dbo.capadmission n (nolock) on (n.id = m.idadmission)
+																			join dbiwsosvidaAracajuUnificado.dbo.glbpatient o (nolock) on (o.id = n.idpatient)
+																			join dbiwsosvidaAracajuUnificado.dbo.glbperson p (nolock) on (p.id = o.idperson)
+			  Where
+				inicioprescricao between @data_inicio+' 00:00:00' and @data_fim+' 23:59:59'
+				and not exists (select 1
+							    from relatorios.dbo.Indicador_Pend_Prod_Presc_Por_Item_Cancelamentos_AJU
+							    where
+									idprescription = aa.numprescricao and scmaterial = aa.codscc
+							   )
+		) a,
+
+		  (select convert(char(10),getdate(),103) data_processamento, month(getdate()) mes2, year(getdate()) ano2, count(*) NumSolicatçoes,
+				  6 idhealthprovider
+		  from dbiwsosvidaAracajuUnificado.dbo.matmaterialmov a left join dbiwsosvidaAracajuUnificado.dbo.matmaterialtype c on (c.scmaterial = a.scmaterial)
+																left join dbiwsosvidaAracajuUnificado.dbo.scccode d on (d.id = a.scmaterial)
+																left join dbiwsosvidaAracajuUnificado.dbo.matmaterial e on (e.id = a.idmaterial)
+																left join dbiwsosvidaAracajuUnificado.dbo.matstoragearea f on (f.id = a.idstoareasource)
+																left join dbiwsosvidaAracajuUnificado.dbo.scccode g on (g.id = a.scaddresssource)
+																left join dbiwsosvidaAracajuUnificado.dbo.matstoragearea h on (h.id = a.idstoareadest)
+																left join dbiwsosvidaAracajuUnificado.dbo.scccode i on (i.id = a.scaddressdest)
+																left join dbiwsosvidaAracajuUnificado.dbo.capprescripitem j on (j.id = a.idprescripitem)
+																left join dbiwsosvidaAracajuUnificado.dbo.sccalternate l on (l.id = a.idalternate)
+																join dbiwsosvidaAracajuUnificado.dbo.matresupply b (nolock) on (b.id = a.idresupply)
+																join dbiwsosvidaAracajuUnificado.dbo.capprescription m (nolock) on (a.idprescription = m.id)
+																/* apoio para consulta unidade operacional*/
+																join dbiwsosvidaAracajuUnificado.dbo.capadmission n (nolock) on (n.id = m.idadmission)
+																join dbiwsosvidaAracajuUnificado.dbo.glbpatient o (nolock) on (o.id = n.idpatient)
+																join dbiwsosvidaAracajuUnificado.dbo.glbperson p (nolock) on (p.id = o.idperson)
+
+		  where
+			m.id in (select id
+						 from dbiwsosvidaAracajuUnificado.dbo.capprescription
+						 where
+							--convert(char(10),getdate(),103) = convert(char(10),startdate,103)
+							StartDate between @data_inicio+' 00:00:00' and @data_fim+' 23:59:59'
+							and nursingliberation is not null) --Considera todas as prescrições iniciadas no dia da execução da rotina
+			and datepart(dw,m.startdate) > 1 --desconsidera os domingos
+			and not (b.emergency > 0 and datepart(hour,nursingliberation) >= 19) --desconsidera todas as prescrições que não sejam periódicas e que tenham sido liberadas após as 19 horas
+			and not exists (select 1
+							from relatorios.dbo.Indicador_Pend_Prod_Presc_Por_Item_Cancelamentos_AJU
+							where
+								idprescription = a.idprescription
+								and scmaterial = a.scmaterial
+						   )
+
+		) bb
+
+	where
+		a.idhealthprovider = bb.idhealthprovider
+
+	) a join ifrconstantitem k (nolock) on (k.idconstant = 680 and k.keyindex = a.idhealthprovider)
+
+	where
+		k.keyindex = $P{Unidade}
+
+order by NumAtendimento, NumPrescricao, CodScc]]>
+	</queryString>
+	<field name="IDUnidade" class="java.lang.Short"/>
+	<field name="UnidadeOp" class="java.lang.String"/>
+	<field name="ID" class="java.lang.Integer"/>
+	<field name="NumAtendimento" class="java.lang.Integer"/>
+	<field name="NumPrescricao" class="java.lang.Integer"/>
+	<field name="DtLiberacao" class="java.sql.Timestamp"/>
+	<field name="InicioPrescricao" class="java.sql.Timestamp"/>
+	<field name="FimPrescricao" class="java.sql.Timestamp"/>
+	<field name="DataRegistro" class="java.sql.Timestamp"/>
+	<field name="Mes" class="java.lang.Integer"/>
+	<field name="Ano" class="java.lang.Integer"/>
+	<field name="CodScc" class="java.lang.Integer"/>
+	<field name="Descricao" class="java.lang.String"/>
+	<field name="Complementar" class="java.lang.String"/>
+	<field name="Qtd" class="java.lang.Integer"/>
+	<field name="Liberação" class="java.lang.String"/>
+	<field name="Inicio" class="java.lang.String"/>
+	<field name="Fim" class="java.lang.String"/>
+	<field name="Registro" class="java.lang.String"/>
+	<field name="idhealthprovider" class="java.lang.Integer"/>
+	<field name="data_processamento" class="java.lang.String"/>
+	<field name="mes2" class="java.lang.Integer"/>
+	<field name="ano2" class="java.lang.Integer"/>
+	<field name="NumSolicatçoes" class="java.lang.Integer"/>
+	<variable name="ID_1" class="java.lang.Integer" calculation="Count">
+		<variableExpression><![CDATA[$F{ID}]]></variableExpression>
+	</variable>
+	<variable name="Indice de pendências" class="java.lang.Float">
+		<variableExpression><![CDATA[($V{ID_1}*100)/$F{NumSolicatçoes}]]></variableExpression>
+	</variable>
+	<group name="Atendimento">
+		<groupExpression><![CDATA[$F{NumAtendimento}]]></groupExpression>
+		<groupHeader>
+			<band height="14">
+				<textField>
+					<reportElement mode="Opaque" x="0" y="0" width="802" height="14" forecolor="#CC0000" backcolor="#CCCCCC"/>
+					<textElement verticalAlignment="Middle">
+						<font fontName="Arial" size="12" isBold="true"/>
+					</textElement>
+					<textFieldExpression class="java.lang.String"><![CDATA["Atendimento: "+$F{NumAtendimento}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupHeader>
+		<groupFooter>
+			<band height="5"/>
+		</groupFooter>
+	</group>
+	<background>
+		<band height="555">
+			<image scaleImage="RetainShape" hAlign="Center" onErrorType="Blank">
+				<reportElement stretchType="RelativeToBandHeight" mode="Opaque" x="187" y="201" width="433" height="175" isPrintWhenDetailOverflows="true">
+					<property name="TYPE" value="#IMAGE_FROM_DATABASE"/>
+				</reportElement>
+				<imageExpression class="java.lang.String"><![CDATA[($P{Unidade}=="0")?"30650":($P{Unidade}=="1")?"16862":""]]></imageExpression>
+			</image>
+		</band>
+	</background>
+	<title>
+		<band height="129">
+			<rectangle>
+				<reportElement x="656" y="0" width="146" height="65"/>
+			</rectangle>
+			<staticText>
+				<reportElement x="710" y="54" width="49" height="11"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<text><![CDATA[Rel.:1854]]></text>
+			</staticText>
+			<rectangle>
+				<reportElement x="0" y="0" width="136" height="65"/>
+			</rectangle>
+			<image onErrorType="Blank">
+				<reportElement x="8" y="6" width="120" height="53">
+					<property name="TYPE" value="#IMAGE_FROM_DATABASE"/>
+				</reportElement>
+				<imageExpression class="java.lang.String"><![CDATA["9527"]]></imageExpression>
+			</image>
+			<textField>
+				<reportElement x="0" y="73" width="802" height="16"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Período de:"+$P{Inicio}+" à "+$P{Fim}]]></textFieldExpression>
+			</textField>
+			<textField pattern="dd/MM/yyyy h.mm a">
+				<reportElement x="674" y="32" width="115" height="22"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="10" isBold="false"/>
+				</textElement>
+				<textFieldExpression class="java.util.Date"><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="680" y="6" width="100" height="20"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Impresso em:]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="136" y="89" width="520" height="20" forecolor="#FF0033"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[($P{Unidade}=="1")?"Unidade: Salvador":
+($P{Unidade}=="5")?"Unidade: Brasília":
+($P{Unidade}=="6")?"Unidade: Aracaju":
+"Unidade: Não selecionada"]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="136" y="0" width="520" height="65"/>
+				<box>
+					<pen lineWidth="1.0"/>
+					<topPen lineWidth="1.0"/>
+					<leftPen lineWidth="1.0"/>
+					<bottomPen lineWidth="1.0"/>
+					<rightPen lineWidth="1.0"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="18" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Relatório de Apuração indicador de pendência
+Por ítem solicitado - para revisão]]></text>
+			</staticText>
+		</band>
+	</title>
+	<columnHeader>
+		<band height="20" splitType="Stretch">
+			<staticText>
+				<reportElement mode="Opaque" x="0" y="0" width="77" height="20" backcolor="#CCFFCC"/>
+				<box>
+					<bottomPen lineWidth="1.0"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Prescrição]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="77" y="0" width="59" height="20" backcolor="#CCFFCC"/>
+				<box>
+					<bottomPen lineWidth="1.0"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Data
+Liberação]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="136" y="0" width="82" height="20" backcolor="#CCFFCC"/>
+				<box>
+					<bottomPen lineWidth="1.0"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Início
+Prescrição]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="218" y="0" width="70" height="20" backcolor="#CCFFCC"/>
+				<box>
+					<bottomPen lineWidth="1.0"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Fim
+Prescrição]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="288" y="0" width="64" height="20" backcolor="#CCFFCC"/>
+				<box>
+					<bottomPen lineWidth="1.0"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Data
+Registro]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="352" y="0" width="50" height="20" backcolor="#CCFFCC"/>
+				<box>
+					<bottomPen lineWidth="1.0"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Código]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="402" y="0" width="286" height="20" backcolor="#CCFFCC"/>
+				<box>
+					<bottomPen lineWidth="1.0"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Descrição]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="728" y="0" width="74" height="20" backcolor="#CCFFCC"/>
+				<box>
+					<bottomPen lineWidth="1.0"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Complementar]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="688" y="0" width="40" height="20" backcolor="#CCFFCC"/>
+				<box>
+					<bottomPen lineWidth="1.0"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Qtd]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="10" splitType="Stretch">
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="77" height="10" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression class="java.lang.Integer"><![CDATA[$F{NumPrescricao}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="352" y="0" width="50" height="10" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression class="java.lang.Integer"><![CDATA[$F{CodScc}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="402" y="0" width="286" height="10" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{Descricao}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="288" y="0" width="64" height="10" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+				</box>
+				<textElement>
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{Registro}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="218" y="0" width="70" height="10" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+				</box>
+				<textElement>
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{Fim}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="136" y="0" width="82" height="10" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+				</box>
+				<textElement>
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{Inicio}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="77" y="0" width="59" height="10" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+				</box>
+				<textElement>
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{Liberação}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="728" y="0" width="74" height="10" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[($F{Complementar}=="1")?"Sim":"Não"]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="688" y="0" width="40" height="10" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression class="java.lang.Integer"><![CDATA[$F{Qtd}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<pageFooter>
+		<band height="13" splitType="Stretch">
+			<textField isStretchWithOverflow="true" evaluationTime="Report">
+				<reportElement stretchType="RelativeToBandHeight" x="416" y="0" width="386" height="13" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="1.0"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[" " + $V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="416" height="13" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="1.0"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Página "+$V{PAGE_NUMBER}+" de "]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageFooter>
+	<summary>
+		<band height="93" splitType="Stretch">
+			<line>
+				<reportElement x="0" y="12" width="802" height="1"/>
+				<graphicElement>
+					<pen lineWidth="2.0" lineStyle="Double"/>
+				</graphicElement>
+			</line>
+			<staticText>
+				<reportElement x="0" y="18" width="155" height="24"/>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="16" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Resumo:]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="500" y="73" width="147" height="20"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression class="java.lang.Integer"><![CDATA[$V{ID_1}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="155" y="73" width="90" height="20"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression class="java.lang.Integer"><![CDATA[$F{mes2}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="0" y="53" width="155" height="20"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Data do Processamento]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="155" y="53" width="90" height="20"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Mês]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="245" y="73" width="108" height="20"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression class="java.lang.Integer"><![CDATA[$F{ano2}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="73" width="155" height="20"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{data_processamento}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="353" y="53" width="147" height="20"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Número de Solicitações]]></text>
+			</staticText>
+			<textField pattern="#,##0">
+				<reportElement x="353" y="73" width="147" height="20"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression class="java.lang.Integer"><![CDATA[$F{NumSolicatçoes}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="245" y="53" width="108" height="20"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Ano]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="500" y="53" width="147" height="20"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Número de Pendências]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="647" y="53" width="155" height="20"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[índice de Pendências %]]></text>
+			</staticText>
+			<textField pattern="#,##0.00">
+				<reportElement x="647" y="73" width="155" height="20"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression class="java.lang.Double"><![CDATA[$V{Indice de pendências}]]></textFieldExpression>
+			</textField>
+		</band>
+	</summary>
+	<noData>
+		<band height="143">
+			<image scaleImage="RetainShape" onErrorType="Blank">
+				<reportElement stretchType="RelativeToBandHeight" x="260" y="67" width="209" height="76" isPrintWhenDetailOverflows="true">
+					<property name="TYPE" value="#IMAGE_FROM_DATABASE"/>
+				</reportElement>
+				<imageExpression class="java.lang.String"><![CDATA[($P{Unidade}=="1")?"30111":
+($P{Unidade}=="5")?"30111":
+($P{Unidade}=="6")?"16718":""]]></imageExpression>
+			</image>
+			<textField>
+				<reportElement x="101" y="0" width="555" height="67" forecolor="#FF0033" backcolor="#FF0033"/>
+				<textElement textAlignment="Justified">
+					<font size="16" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Não há registros a serem apresentados, favor verificar os dados preenchidos, caso tenha certeza do preenchimento correto, contatar o setor de TI"]]></textFieldExpression>
+			</textField>
+		</band>
+	</noData>
+</jasperReport>

@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Relat. de Itens relevantes.jrxml" language="groovy" pageWidth="842" pageHeight="595" orientation="Landscape" whenNoDataType="NoDataSection" columnWidth="802" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<parameter name="dt_ini" class="java.lang.String">
+		<property name="LABEL" value="Data Inicio"/>
+		<property name="TYPE" value="#DATE"/>
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="dt_fim" class="java.lang.String">
+		<property name="LABEL" value="Data Fim"/>
+		<property name="TYPE" value="#DATE"/>
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="Convenio" class="java.lang.String">
+		<property name="TYPE" value="#SQL"/>
+		<property name="LABEL" value="Convenio"/>
+		<property name="SQL_COMMAND" value="select id, name from glbenterprise a  where a.HealthPlan = 1 union Select 0, &apos; Todos&apos;  order by a.name  "/>
+		<defaultValueExpression><![CDATA["0"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["V:\\AD\\1935 - Relatório de Itens Relevantes\\"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="Unidade" class="java.lang.String">
+		<property name="TYPE" value="#SQL"/>
+		<property name="SQL_COMMAND" value="select keyindex ID, translation Name from ifrconstantitem where idconstant = 680 and keyindex not in (0,3,4) order by name"/>
+		<defaultValueExpression><![CDATA["."]]></defaultValueExpression>
+	</parameter>
+	<queryString>
+		<![CDATA[set dateformat dmy;
+
+
+select $P{dt_ini} Data_Inicial, $P{dt_fim} Data_Final, $P{Convenio} Convenio, o.id Imagem_Erro, p.id Marca_dagua
+from dbiwsosvida.dbo.glbimage o, dbiwsosvida.dbo.glbimage p
+where
+      o.id = 30111
+      and p.id = 30650]]>
+	</queryString>
+	<field name="Data_Inicial" class="java.lang.String"/>
+	<field name="Data_Final" class="java.lang.String"/>
+	<field name="Convenio" class="java.lang.String"/>
+	<field name="Imagem_Erro" class="java.lang.Integer"/>
+	<field name="Marca_dagua" class="java.lang.Integer"/>
+	<background>
+		<band height="555">
+			<image scaleImage="RetainShape" hAlign="Center" onErrorType="Blank">
+				<reportElement stretchType="RelativeToBandHeight" mode="Opaque" x="183" y="204" width="433" height="175" isPrintWhenDetailOverflows="true">
+					<property name="TYPE" value="#IMAGE_FROM_DATABASE"/>
+				</reportElement>
+				<imageExpression class="java.lang.String"><![CDATA[($P{Unidade}.equals("0"))?"30650":($P{Unidade}.equals("1"))?"16862":""]]></imageExpression>
+			</image>
+		</band>
+	</background>
+	<title>
+		<band height="100" splitType="Stretch">
+			<rectangle>
+				<reportElement x="676" y="0" width="126" height="65"/>
+			</rectangle>
+			<rectangle>
+				<reportElement x="161" y="0" width="515" height="65"/>
+			</rectangle>
+			<staticText>
+				<reportElement x="689" y="4" width="100" height="20"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Impresso em:]]></text>
+			</staticText>
+			<textField pattern="dd/MM/yyyy h.mm a">
+				<reportElement x="683" y="35" width="115" height="22"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="false"/>
+				</textElement>
+				<textFieldExpression class="java.util.Date"><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="74" width="185" height="17"/>
+				<textElement textAlignment="Justified" verticalAlignment="Middle" markup="none">
+					<font size="12" isBold="true" isStrikeThrough="false"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Inicio: "+$P{dt_ini}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="162" y="3" width="514" height="61"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle" markup="none">
+					<font size="14" isBold="true" isStrikeThrough="false"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Relatório de Itens Relevantes - Presente em Prescrição "]]></textFieldExpression>
+			</textField>
+			<rectangle>
+				<reportElement x="0" y="0" width="161" height="65"/>
+			</rectangle>
+			<textField>
+				<reportElement x="185" y="74" width="293" height="17"/>
+				<textElement textAlignment="Justified" verticalAlignment="Middle" markup="none">
+					<font size="12" isBold="true" isStrikeThrough="false"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Fim: "+$P{dt_fim}]]></textFieldExpression>
+			</textField>
+			<image onErrorType="Blank">
+				<reportElement x="7" y="3" width="149" height="61">
+					<property name="TYPE" value="#IMAGE_FROM_DATABASE"/>
+				</reportElement>
+				<imageExpression class="java.lang.String"><![CDATA["9527"]]></imageExpression>
+			</image>
+			<staticText>
+				<reportElement x="689" y="56" width="100" height="9"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<text><![CDATA[Rel.1935]]></text>
+			</staticText>
+		</band>
+	</title>
+	<detail>
+		<band height="80">
+			<subreport>
+				<reportElement x="0" y="0" width="748" height="65"/>
+				<subreportParameter name="Unidade">
+					<subreportParameterExpression><![CDATA[$P{Unidade}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="dt_fim">
+					<subreportParameterExpression><![CDATA[$P{dt_fim}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="Convenio">
+					<subreportParameterExpression><![CDATA[$P{Convenio}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="dt_ini">
+					<subreportParameterExpression><![CDATA[$P{dt_ini}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression class="java.lang.String"><![CDATA["MasterSub.jasper"]]></subreportExpression>
+			</subreport>
+		</band>
+		<band height="80">
+			<subreport>
+				<reportElement x="1" y="0" width="748" height="65"/>
+				<subreportParameter name="Unidade">
+					<subreportParameterExpression><![CDATA[$P{Unidade}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="dt_fim">
+					<subreportParameterExpression><![CDATA[$P{dt_fim}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="Convenio">
+					<subreportParameterExpression><![CDATA[$P{Convenio}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="dt_ini">
+					<subreportParameterExpression><![CDATA[$P{dt_ini}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression class="java.lang.String"><![CDATA["Master1Sub.jasper"]]></subreportExpression>
+			</subreport>
+		</band>
+		<band height="80">
+			<subreport>
+				<reportElement x="0" y="0" width="748" height="65"/>
+				<subreportParameter name="Unidade">
+					<subreportParameterExpression><![CDATA[$P{Unidade}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="dt_fim">
+					<subreportParameterExpression><![CDATA[$P{dt_fim}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="Convenio">
+					<subreportParameterExpression><![CDATA[$P{Convenio}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="dt_ini">
+					<subreportParameterExpression><![CDATA[$P{dt_ini}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression class="java.lang.String"><![CDATA["Master2Sub.jasper"]]></subreportExpression>
+			</subreport>
+		</band>
+		<band height="80">
+			<subreport>
+				<reportElement x="0" y="0" width="748" height="65"/>
+				<subreportParameter name="Unidade">
+					<subreportParameterExpression><![CDATA[$P{Unidade}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="dt_fim">
+					<subreportParameterExpression><![CDATA[$P{dt_fim}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="Convenio">
+					<subreportParameterExpression><![CDATA[$P{Convenio}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="dt_ini">
+					<subreportParameterExpression><![CDATA[$P{dt_ini}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression class="java.lang.String"><![CDATA["Master3Sub.jasper"]]></subreportExpression>
+			</subreport>
+		</band>
+	</detail>
+	<pageFooter>
+		<band height="12" splitType="Stretch">
+			<textField evaluationTime="Report">
+				<reportElement x="401" y="0" width="401" height="12"/>
+				<box>
+					<topPen lineWidth="1.0"/>
+				</box>
+				<textElement>
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[" " + $V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="0" width="401" height="12"/>
+				<box>
+					<topPen lineWidth="1.0"/>
+				</box>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Página "+$V{PAGE_NUMBER}+" de"]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageFooter>
+	<noData>
+		<band height="147">
+			<image scaleImage="RetainShape" onErrorType="Blank">
+				<reportElement stretchType="RelativeToBandHeight" x="260" y="67" width="209" height="76" isPrintWhenDetailOverflows="true">
+					<property name="TYPE" value="#IMAGE_FROM_DATABASE"/>
+				</reportElement>
+				<imageExpression class="java.lang.String"><![CDATA[$F{Imagem_Erro}.toString()]]></imageExpression>
+			</image>
+			<textField>
+				<reportElement x="0" y="0" width="802" height="67" forecolor="#FF0033" backcolor="#FF0033"/>
+				<textElement textAlignment="Justified">
+					<font size="16" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Não há registros a serem apresentados, favor verificar os dados preenchidos, caso tenha certeza do preenchimento correto, contatar o setor de TI"]]></textFieldExpression>
+			</textField>
+		</band>
+	</noData>
+</jasperReport>

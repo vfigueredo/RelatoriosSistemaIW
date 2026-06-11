@@ -1,0 +1,520 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Relat. de Itens relevantes.jrxml" language="groovy" pageWidth="842" pageHeight="595" orientation="Landscape" whenNoDataType="NoDataSection" columnWidth="842" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0">
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<parameter name="dt_ini" class="java.lang.String">
+		<property name="LABEL" value="Data Inicio"/>
+		<defaultValueExpression><![CDATA["01/05/2015"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="dt_fim" class="java.lang.String">
+		<property name="LABEL" value="Data Fim"/>
+		<defaultValueExpression><![CDATA["05/05/2015"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="Convenio" class="java.lang.String">
+		<property name="TYPE" value="#SQL"/>
+		<property name="LABEL" value="Convenio"/>
+		<property name="SQL_COMMAND" value="select id, name from glbenterprise a  where a.HealthPlan = 1 union Select 0, &apos; Todos&apos;  order by a.name  "/>
+		<defaultValueExpression><![CDATA["0"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="Unidade" class="java.lang.String">
+		<property name="TYPE" value="#SQL"/>
+		<property name="SQL_COMMAND" value="select keyindex ID, translation Name from ifrconstantitem where idconstant = 680 and keyindex not in (0,3,4) order by name"/>
+		<defaultValueExpression><![CDATA["."]]></defaultValueExpression>
+	</parameter>
+	<queryString>
+		<![CDATA[set dateformat dmy;
+
+declare @data_inicio datetime
+declare @data_fim datetime
+declare @Convenio int
+
+
+set @data_inicio = $P{dt_ini}+' 00:00:00'
+set @data_fim = $P{dt_fim}+' 23:59:59'
+set @convenio = $P{Convenio}
+
+--Materiais grupo 2 - Materiais de prescrição médica
+select *, (Qtd_prescricao*PrecoUnitario) Valor_Cobrar
+from
+                (select min(Prioridade) prioridade,IDUnidade, TabPreco,IDContrato,NomeContrato,idempresa,empresa,Idadmission,paciente, Prescrição,Data_Inicio,Data_Fim,
+                codigoiw, Item_tabela, sum(Qtd_prescricao) Qtd_prescricao, Tabela, frequencia,case when TipoCobrança = 1 then 'PreçoMaximoConsumidor' else 'PreçoFábrica' end TipoCobrança,
+                AcrescPrecoFator,QtdUmTabela,PrecoFab, round(case when QtdUmTabela = 0 then PrecoFab else (PrecoFab/QtdUmTabela) end,2) PrecoFabUnit,
+                PrecoMaxCons,round(case when QtdUmTabela = '0' then PrecoMaxCons else (PrecoMaxCons/QtdUmTabela) end,2) PrecoMaxConsUnit
+                , Fator, preco
+                , (case when TipoCobrança = 1 then round(case when QtdUmTabela = '0' then PrecoMaxCons else (PrecoMaxCons/QtdUmTabela) end,2) else round(case when QtdUmTabela = 0 then PrecoFab else (PrecoFab/QtdUmTabela) end,2) end ) PrecoUnitario
+
+                from
+                               (select aa.*, bb.*
+                               from
+                                        (select a.idcontract IDContrato, h.name NomeContrato, a.alternateseq Prioridade, a.IDPriceMaterial
+												IDTab, a.MatPriceColumn TipoCobrança, a.MaterialFactor Fator, Mapeamento.TabPreco, Mapeamento.Versao, Mapeamento.Data,
+												Mapeamento.SCCode codigoiw, g.codename Item_tabela, Mapeamento.CodMapeado CodigoTabPreco, round(PFB,2) PrecoFab,
+												round((PFB*(a.MaterialFactor/100)),2) AcrescPrecoFator,
+												round(PFB+(PFB*(a.MaterialFactor/100)),2) PFAcrescido,
+												round(PMC,2) PrecoMaxCons, Mapeamento.Factor QtdUmTabela,
+												case when a.MatPriceColumn = 0 then round(PFB+(PFB*(a.MaterialFactor/100)),2) else round(PMC,2) end preco
+
+										   from CtrPriceCfg a (nolock) join ctrcontract h (nolock) on (h.id = a.idcontract)
+																	   left join (select  cc.idpricelist, dd.name TabPreco, bb.idpricelstversion, cc.name Versao, convert(varchar,cc.VersionDate,103) Data,
+																						  aa.sccode, aa.sccoderefer CodMapeado, bb.price PMC, bb.MaxValue PFB, aa.Factor
+																				  from ctrsccoderefer aa (nolock) join ctrpricelistitem bb (nolock) on (bb.sccode = aa.sccoderefer)
+																												  join ctrpricelstversion cc (nolock) on (cc.id = bb.idpricelstversion and cc.active  = 1
+																																						  and cc.idpricelist in (2,512,521,522,837)
+																																						)
+																												  join ctrpricelist dd (nolock) on (dd.id = cc.idpricelist)
+																				  where
+												  										aa.sccoderefer is not null
+																				  union all
+
+																				  select cc.idpricelist, dd.name TabPreco, bb.idpricelstversion, cc.name Versao, convert(varchar,cc.VersionDate,103) Data,
+																						 bb.sccode, bb.sccode CodMapeado, bb.price PMC, bb.MaxValue PFB, bb.MinPackage Factor
+																				  from ctrpricelistitem bb (nolock) join ctrpricelstversion cc (nolock) on (cc.id = bb.idpricelstversion and cc.active  = 1 and cc.idpricelist not in (2,512,521,522,837))
+																													join ctrpricelist dd (nolock) on (dd.id = cc.idpricelist)
+																				) Mapeamento on (Mapeamento.idpricelist = a.IDPriceMaterial)
+																	   join tcmat_enfermagem f (nolock) on (f.idcode = Mapeamento.sccode)
+																	   join scccode g (nolock) on (g.id = (case when Mapeamento.idpricelist in (2,512,837,521,522) then Mapeamento.CodMapeado
+																												else Mapeamento.sccode
+																											end)
+																								  )
+
+										) aa join (select c.idhealthprovider IDUnidade, a.id Prescrição,a.IDAdmission Idadmission,g.name Paciente,
+													  c.IDContract Contrato,l.id IDEmpresa,l.name empresa,scmaterial,
+                                               e.id,convert(varchar,a.startdate,103) Data_Inicio, convert(varchar,a.enddate,103) Data_Fim,
+                                               d.codename Item, b.Quantity Qtd_prescricao, b.mu,j.name frequencia,  '' Orçamento,'Materiais' Tabela
+                                               from capprescription a (nolock) join capprescripmat b (nolock) on (a.id = b.idprescription and b.Payer = 1)
+																			   join capadmission c (nolock) on (a.idadmission = c.id)
+																			   join scccode d (nolock) on (d.id = b.scmaterial)
+																			   join scctable e (nolock) on (e.id = d.idtable)
+																			   join glbpatient f (nolock) on (c.idpatient = f.id)
+																			   join glbperson g (nolock) on (f.idperson = g.id)
+																			   join glbfrequency j (nolock) on (j.id = b.idfrequency)
+																			   join tcmat_enfermagem k (nolock) on (k.idcode = b.scmaterial)
+																			   join glbenterprise l (nolock) on (l.id = c.identerprise)
+                                               where
+                                                              a.id in (select id
+																			from capprescription (nolock)
+																			where
+																				idadmission = c.id
+																				and (startdate BETWEEN @data_inicio AND @data_fim OR
+		 									     enddate BETWEEN @data_inicio AND @data_fim)
+or MedicalSignedDate BETWEEN @data_inicio AND @data_fim
+																		)
+
+                                                                 --A condição abaixo filtra os ítens da prescrição médica que não estão em orçamento ou aditivo
+                                                              /* and b.scmaterial not in (select b.scresource
+                                                                                        from capbudget a (nolock), capbudgetitem b (nolock)
+                                                                                        where
+                                                                                                                    a.id = b.idbudget
+                                                                                                                    and idadmission = c.id
+                                                                                                                    and (@data_inicio between startdate and enddate
+                                                                                                                    or @data_fim between startdate and enddate)
+                                                                                                                    and a.canceled = 0
+
+                                                                                                    union
+
+                                                                                            SELECT b.scresource
+																							FROM capbudgetadditive a,
+																								capbudgetitem b, capprescripmat Cc
+
+																							WHERE cc.idbudget = b.idbudget
+																							AND a.idadmission = c.id
+																							AND a.id = b.idbudgetadditive
+																							AND (@data_inicio BETWEEN a.startdate AND a.enddate
+																									OR @data_fim BETWEEN a.startdate AND a.enddate)) */
+                                                               and k.grupo in ('Sondas')
+                                                               and (c.CheckoutDate is null or c.CheckoutDate not between @data_inicio+' 00:00:00' and @data_fim+' 23:59:59')
+                                                               and ((c.CHECKINDATE >= @data_inicio+' 00:00:00' and c.CHECKINDATE < @data_fim+' 23:59:59') or
+                                                                              (c.CheckoutDate >= @data_inicio+' 00:00:00' and c.CheckoutDate < @data_fim+' 23:59:59') or
+                                                                              (c.CHECKINDATE < @data_fim+' 23:59:59' and ( c.CheckoutDate is null or c.CheckoutDate >= @data_inicio+' 00:00:00')))
+
+						) bb on (aa.codigoiw = bb.scmaterial and aa.idcontrato = bb.contrato)
+
+                ) geral join (select min(a.alternateseq) Priori, g.id SCCode, a.IDContract
+							  from CtrPriceCfg a (nolock) join ctrcontract h (nolock) on (h.id = a.idcontract)
+														   left join (select  cc.idpricelist, dd.name TabPreco, bb.idpricelstversion, cc.name Versao, convert(varchar,cc.VersionDate,103) Data,
+																			  aa.sccode, aa.sccoderefer CodMapeado, bb.price PMC, bb.MaxValue PFB, aa.Factor
+																	  from ctrsccoderefer aa (nolock) join ctrpricelistitem bb (nolock) on (bb.sccode = aa.sccoderefer)
+																									  join ctrpricelstversion cc (nolock) on (cc.id = bb.idpricelstversion and cc.active  = 1
+																																			  and cc.idpricelist in (2,512,521,522,837)
+																																			)
+																									  join ctrpricelist dd (nolock) on (dd.id = cc.idpricelist)
+																	  where
+												  							aa.sccoderefer is not null
+																	  union all
+
+																	  select cc.idpricelist, dd.name TabPreco, bb.idpricelstversion, cc.name Versao, convert(varchar,cc.VersionDate,103) Data,
+																			 bb.sccode, bb.sccode CodMapeado, bb.price PMC, bb.MaxValue PFB, bb.MinPackage Factor
+																	  from ctrpricelistitem bb (nolock) join ctrpricelstversion cc (nolock) on (cc.id = bb.idpricelstversion and cc.active  = 1 and cc.idpricelist not in (2,512,521,522,837))
+																										join ctrpricelist dd (nolock) on (dd.id = cc.idpricelist)
+																	) Mapeamento on (Mapeamento.idpricelist = a.IDPriceMaterial)
+														   join tcmat_enfermagem f (nolock) on (f.idcode = Mapeamento.sccode)
+														   join scccode g (nolock) on (g.id = (case when Mapeamento.idpricelist in (2,512,837,521,522) then Mapeamento.CodMapeado
+																									else Mapeamento.sccode
+																								end)
+																					  )
+								group by g.id, a.IDContract
+							 ) cc on (cc.sccode = codigoiw
+									  and IDContract = IDContrato
+									  and priori = Prioridade
+									  and (idempresa = @Convenio  or @Convenio  = 0)
+									)
+
+                group by IDUnidade, TabPreco,IDContrato,NomeContrato,idempresa,empresa,Idadmission,paciente, Prescrição,Data_Inicio,Data_Fim,codigoiw, Item_tabela,
+                Tabela, frequencia,case when TipoCobrança = 1 then 'PreçoMaximoConsumidor' else 'PreçoFábrica' end ,
+                AcrescPrecoFator,QtdUmTabela,PrecoFab, round(case when QtdUmTabela = 0 then PrecoFab else (PrecoFab/QtdUmTabela) end,2),
+                PrecoMaxCons,round(case when QtdUmTabela = '0' then PrecoMaxCons else (PrecoMaxCons/QtdUmTabela) end,2), Fator, preco
+                , (case when TipoCobrança = 1 then round(case when QtdUmTabela = '0' then PrecoMaxCons else (PrecoMaxCons/QtdUmTabela) end,2) else round(case when QtdUmTabela = 0 then PrecoFab else (PrecoFab/QtdUmTabela) end,2) end )
+				)
+                dd
+
+Where
+          (Qtd_prescricao*PrecoUnitario)  >= (case when idempresa = 285 then '150' else '50' end) and
+	idUnidade = $P{Unidade}
+
+--Fim Materiais grupo 2
+order by empresa, paciente, tabela, item_tabela]]>
+	</queryString>
+	<field name="prioridade" class="java.lang.Short"/>
+	<field name="IDUnidade" class="java.lang.Integer"/>
+	<field name="TabPreco" class="java.lang.String"/>
+	<field name="IDContrato" class="java.lang.Integer"/>
+	<field name="NomeContrato" class="java.lang.String"/>
+	<field name="idempresa" class="java.lang.Integer"/>
+	<field name="empresa" class="java.lang.String"/>
+	<field name="Idadmission" class="java.lang.Integer"/>
+	<field name="paciente" class="java.lang.String"/>
+	<field name="Prescrição" class="java.lang.Integer"/>
+	<field name="Data_Inicio" class="java.lang.String"/>
+	<field name="Data_Fim" class="java.lang.String"/>
+	<field name="codigoiw" class="java.lang.Integer"/>
+	<field name="Item_tabela" class="java.lang.String"/>
+	<field name="Qtd_prescricao" class="java.lang.Double"/>
+	<field name="Tabela" class="java.lang.String"/>
+	<field name="frequencia" class="java.lang.String"/>
+	<field name="TipoCobrança" class="java.lang.String"/>
+	<field name="AcrescPrecoFator" class="java.lang.Double"/>
+	<field name="QtdUmTabela" class="java.lang.Double"/>
+	<field name="PrecoFab" class="java.lang.Double"/>
+	<field name="PrecoFabUnit" class="java.lang.Double"/>
+	<field name="PrecoMaxCons" class="java.lang.Double"/>
+	<field name="PrecoMaxConsUnit" class="java.lang.Double"/>
+	<field name="Fator" class="java.lang.Double"/>
+	<field name="preco" class="java.lang.Double"/>
+	<field name="PrecoUnitario" class="java.lang.Double"/>
+	<field name="Valor_Cobrar" class="java.lang.Double"/>
+	<group name="Convênio">
+		<groupExpression><![CDATA[$F{empresa}]]></groupExpression>
+		<groupHeader>
+			<band height="25">
+				<textField>
+					<reportElement mode="Opaque" x="0" y="9" width="802" height="16" backcolor="#CCFFCC"/>
+					<textElement textAlignment="Justified" verticalAlignment="Middle" markup="none">
+						<font size="12" isBold="true" isStrikeThrough="false"/>
+					</textElement>
+					<textFieldExpression class="java.lang.String"><![CDATA["Convênio: "+$F{empresa}+"    /   "+$F{NomeContrato}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupHeader>
+	</group>
+	<group name="Paciente">
+		<groupExpression><![CDATA[$F{paciente}]]></groupExpression>
+		<groupHeader>
+			<band height="23">
+				<staticText>
+					<reportElement stretchType="RelativeToBandHeight" x="136" y="10" width="47" height="13" isPrintWhenDetailOverflows="true"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font fontName="Arial" size="8" isBold="true"/>
+						<paragraph leftIndent="2"/>
+					</textElement>
+					<text><![CDATA[Código]]></text>
+				</staticText>
+				<staticText>
+					<reportElement stretchType="RelativeToBandHeight" x="182" y="10" width="219" height="13" isPrintWhenDetailOverflows="true"/>
+					<textElement verticalAlignment="Middle">
+						<font fontName="Arial" size="8" isBold="true"/>
+						<paragraph leftIndent="2"/>
+					</textElement>
+					<text><![CDATA[Item]]></text>
+				</staticText>
+				<staticText>
+					<reportElement stretchType="RelativeToBandHeight" mode="Opaque" x="64" y="0" width="41" height="10" isPrintWhenDetailOverflows="true" backcolor="#CCCCCC"/>
+					<textElement verticalAlignment="Middle">
+						<font fontName="Arial" size="8" isBold="true"/>
+						<paragraph leftIndent="2"/>
+					</textElement>
+					<text><![CDATA[Paciente]]></text>
+				</staticText>
+				<staticText>
+					<reportElement stretchType="RelativeToBandHeight" mode="Opaque" x="401" y="10" width="43" height="13" isPrintWhenDetailOverflows="true"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font fontName="Arial" size="8" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Qtd. Presc.]]></text>
+				</staticText>
+				<staticText>
+					<reportElement stretchType="RelativeToBandHeight" x="718" y="10" width="84" height="13" isPrintWhenDetailOverflows="true"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font fontName="Arial" size="8" isBold="true"/>
+						<paragraph rightIndent="2"/>
+					</textElement>
+					<text><![CDATA[Frequência]]></text>
+				</staticText>
+				<staticText>
+					<reportElement stretchType="RelativeToBandHeight" x="590" y="10" width="128" height="13" isPrintWhenDetailOverflows="true"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font fontName="Arial" size="8" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Tabela]]></text>
+				</staticText>
+				<staticText>
+					<reportElement stretchType="RelativeToBandHeight" x="1" y="10" width="45" height="13" isPrintWhenDetailOverflows="true"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font fontName="Arial" size="8" isBold="true"/>
+						<paragraph leftIndent="2"/>
+					</textElement>
+					<text><![CDATA[Prescrição]]></text>
+				</staticText>
+				<staticText>
+					<reportElement stretchType="RelativeToBandHeight" x="46" y="10" width="45" height="13" isPrintWhenDetailOverflows="true"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font fontName="Arial" size="8" isBold="true"/>
+						<paragraph leftIndent="2"/>
+					</textElement>
+					<text><![CDATA[Inicio]]></text>
+				</staticText>
+				<staticText>
+					<reportElement stretchType="RelativeToBandHeight" x="90" y="10" width="46" height="13" isPrintWhenDetailOverflows="true"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font fontName="Arial" size="8" isBold="true"/>
+						<paragraph leftIndent="2"/>
+					</textElement>
+					<text><![CDATA[Fim]]></text>
+				</staticText>
+				<staticText>
+					<reportElement stretchType="RelativeToBandHeight" mode="Opaque" x="1" y="0" width="21" height="10" isPrintWhenDetailOverflows="true" backcolor="#CCCCCC"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font fontName="Arial" size="8" isBold="true"/>
+					</textElement>
+					<text><![CDATA[ID]]></text>
+				</staticText>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement stretchType="RelativeToBandHeight" mode="Opaque" x="22" y="0" width="42" height="10" isPrintWhenDetailOverflows="true" backcolor="#CCCCCC"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font fontName="Arial" size="8"/>
+					</textElement>
+					<textFieldExpression class="java.lang.Integer"><![CDATA[$F{Idadmission}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement stretchType="RelativeToBandHeight" mode="Opaque" x="105" y="0" width="697" height="10" isPrintWhenDetailOverflows="true" backcolor="#CCCCCC"/>
+					<textElement verticalAlignment="Middle">
+						<font fontName="Arial" size="8"/>
+						<paragraph leftIndent="2"/>
+					</textElement>
+					<textFieldExpression class="java.lang.String"><![CDATA[$F{paciente}]]></textFieldExpression>
+				</textField>
+				<staticText>
+					<reportElement stretchType="RelativeToBandHeight" mode="Opaque" x="498" y="10" width="92" height="13" isPrintWhenDetailOverflows="true"/>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="8" isBold="true"/>
+						<paragraph rightIndent="1"/>
+					</textElement>
+					<text><![CDATA[Valor a Cobrar]]></text>
+				</staticText>
+				<staticText>
+					<reportElement stretchType="RelativeToBandHeight" mode="Opaque" x="444" y="10" width="54" height="13" isPrintWhenDetailOverflows="true"/>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="8" isBold="true"/>
+						<paragraph rightIndent="1"/>
+					</textElement>
+					<text><![CDATA[Preço Unit.]]></text>
+				</staticText>
+			</band>
+		</groupHeader>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="22" splitType="Stretch">
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" mode="Opaque" x="1" y="0" width="801" height="22" isPrintWhenDetailOverflows="true" backcolor="#CCCCCC"/>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+					<paragraph leftIndent="2"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Materiais -  Itens de prescrição Médica"]]></textFieldExpression>
+			</textField>
+		</band>
+	</title>
+	<detail>
+		<band height="10" splitType="Stretch">
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="136" y="0" width="47" height="10" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.0"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.0"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+					<paragraph leftIndent="2"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{codigoiw}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="718" y="0" width="84" height="10" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.0"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.0"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+					<paragraph rightIndent="2"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{frequencia}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" mode="Opaque" x="401" y="0" width="43" height="10" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.0"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.0"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{Qtd_prescricao}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="182" y="0" width="219" height="10" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.0"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.0"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+					<paragraph leftIndent="2"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{Item_tabela}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="590" y="0" width="128" height="10" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.0"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.0"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{Tabela}+"\n(Tab.: "+$F{TabPreco}+" - Cobr.: "+$F{TipoCobrança}+")"]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="1" y="0" width="45" height="10" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.0"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.0"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+					<paragraph leftIndent="2"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{Prescrição}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="46" y="0" width="45" height="10" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.0"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.0"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+					<paragraph leftIndent="2"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{Data_Inicio}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="90" y="0" width="46" height="10" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.0"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.0"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+					<paragraph leftIndent="2"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{Data_Fim}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="¤ #,##0.00" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" mode="Opaque" x="498" y="0" width="92" height="10" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.0"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.0"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression class="java.lang.Double"><![CDATA[$F{Qtd_prescricao}*$F{PrecoUnitario}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="¤ #,##0.00" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" mode="Opaque" x="444" y="0" width="54" height="10" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.0"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.0"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression class="java.lang.Double"><![CDATA[$F{PrecoUnitario}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<noData>
+		<band height="50">
+			<textField>
+				<reportElement x="1" y="0" width="802" height="50" forecolor="#FF0033" backcolor="#FF0033"/>
+				<box>
+					<pen lineWidth="0.5" lineColor="#000000"/>
+					<topPen lineWidth="0.5" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="16" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Não há registros a serem apresentados para Materiais - Sondas."]]></textFieldExpression>
+			</textField>
+		</band>
+	</noData>
+</jasperReport>
