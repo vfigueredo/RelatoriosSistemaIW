@@ -40,7 +40,7 @@
 		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
 	</parameter>
 	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
-		<defaultValueExpression><![CDATA["C:\\Users\\hamilton\\Desktop\\Escala Geral\\"]]></defaultValueExpression>
+		<defaultValueExpression><![CDATA["C:\\Users\"]]></defaultValueExpression>
 	</parameter>
 	<queryString>
 		<![CDATA[declare @ano int, @mes int, @empresa int, @unidade int
