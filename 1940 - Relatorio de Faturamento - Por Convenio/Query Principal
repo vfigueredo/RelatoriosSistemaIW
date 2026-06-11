@@ -1,0 +1,40 @@
+Query Princial
+
+set dateformat dmy
+
+declare @inicio as datetime, @fim as datetime
+
+set @inicio = '$P{Inicio}'
+set @fim = '$P{Fim}'
+
+select distinct h.id IDunidade, h.name Unidade, e.name Convenio, b.id, d.name Paciente, month(startdate) mes, year(startdate) ano, i.CodeName, round(sum(round(a.unitprice * a.quantity * (1 - a.discount/100) * (1 - a.discountitem/100),2)) - sum(round(a.unitprice * a.coveragequantity * (1 - a.discount/100) * (1 - a.discountitem/100),2)),2) valor_conta, a.unitprice preco, SUM(a.quantity) quantidade
+
+
+from cappaymentitem a (nolock)
+            join capadmission b (nolock) on (a.idadmission = b.id)
+			join glbpatient c (nolock) on (b.idpatient = c.id)
+			join glbperson d (nolock) on (c.idperson = d.id)
+			join glbenterprise e (nolock) on (b.identerprise = e.id)
+			join cappayment f (nolock) on (a.idpayment = f.id)
+			join ifrconstantitem g (nolock) on (g.keyindex = a.resourcetype and g.idconstant = 81)
+			join glbhealthprovider h (nolock) on (h.id = b.idhealthprovider)
+			join SccCode i on a.SCResource = i.ID
+			inner join scctable j on (i.idtable = j.id) and (J.ID not in (187,198))
+where
+  (a.idpayment in (select a.id
+                   from cappayment a (nolock) left join glbenterprise b (nolock) on (b.id = a.identerprise)
+                   where
+						a.writeoff <> 1
+						and ((
+
+							  (a.identerprise =  $P{Convenio} or $P{Convenio} = 0)
+							  and a.startdate >=  @inicio+' 00:00:00'
+							  and a.startdate <=  @fim+' 23:59:59'
+							  and a.liberated =  1
+							  and a.simulation =  0)
+						    )
+					)
+	)
+    and h.id  = $P{Unidade}
+group by e.name, year(startdate), month(startdate), b.id, d.name, h.id, h.name, i.CodeName, UnitPrice
+order by e.name, d.name, year(startdate), month(startdate)
