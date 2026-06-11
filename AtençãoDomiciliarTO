@@ -1,0 +1,80 @@
+set dateformat dmy;
+
+/*Master Geral Sub*/
+
+select	distinct b.IDHealthProvider IDunidade, p.name Unidade, a.id ID, d.name Paciente, b.id Atendimento, b.PatientAge Idade, b.careplanregister Matricula, g.translation Descricao,
+		convert(varchar,b.checkindate,103) Data_Admissao,convert(varchar,a.eventdate,103)Data_Registro, f.translation Regime_Assistencia,
+		e.id IDConvenio, e.name Convenio, h.translation Sexo,a.sos_justificativa Justificativa, a.prescricao, i.id orcamento,  j.id Codigo,
+		case when j.codename is null then 'Não há orçamento para o periodo do relatório ou complexidade não cadastrada' else j.codename end Complexidade,
+		b.IDPhysician, z.name MedicoAssistente, convert(varchar,z.IDImageSign) AssinaturaMedAssist,
+		z.RegistryNumber CRM, b.SCDiagnostic1 CID, o.codename Diagnostico
+		, case when j.codename is null then '1' else '0' end Erro,
+		substring(Upper(Assinaturas.Cargo),1,1)+substring(LOWER(Assinaturas.Cargo),2,len(Assinaturas.Cargo)) Cargo,
+		Assinaturas.RegistroProfissional, upper(Assinaturas.Profissional) Profissional, Assinaturas.IDASSINATURA, convert(varchar,a.SOS_DATAENVIO_OPER,103) DATAENVIO_OPER,
+
+(select upper(Med.Profissional) from VW_SOS_ASS_PADRAO Med where unidade = b.idhealthprovider and Med.keyindex = 1) Med_Padrao,
+(select Med.RegistroProfissional from VW_SOS_ASS_PADRAO Med where unidade = b.idhealthprovider and Med.keyindex = 1) Med_Registro_Padrao,
+(select Med.IDASSINATURA from VW_SOS_ASS_PADRAO Med where unidade = b.idhealthprovider and Med.keyindex = 1) Med_ASS_Padrao,
+
+
+(select upper(Fisio.Profissional) from VW_SOS_ASS_PADRAO Fisio where unidade = b.idhealthprovider and Fisio.keyindex  = 4) Fisio_Padrao,
+(select Fisio.RegistroProfissional from VW_SOS_ASS_PADRAO Fisio where unidade = b.idhealthprovider and Fisio.keyindex  = 4) Fisio_Registro_Padrao,
+(select Fisio.IDASSINATURA from VW_SOS_ASS_PADRAO Fisio where unidade = b.idhealthprovider and Fisio.keyindex  = 4) Fisio_ASS_Padrao,
+
+
+(select upper(Fono.Profissional) from VW_SOS_ASS_PADRAO Fono where fono.unidade = b.idhealthprovider and Fono.keyindex  = 7) Fono_Padrao,
+(select upper(Fono.RegistroProfissional) from VW_SOS_ASS_PADRAO Fono where fono.unidade = b.idhealthprovider and Fono.keyindex  = 7) Fono_Registro_Padrao,
+(select upper(Fono.IDASSINATURA) from VW_SOS_ASS_PADRAO Fono where fono.unidade = b.idhealthprovider and Fono.keyindex  = 7) FONO_ASS_PADRAO,
+
+(select upper(Nutri.Profissional) from VW_SOS_ASS_PADRAO Nutri where unidade = b.idhealthprovider and Nutri.keyindex  = 3) Nutri_Padrao,
+			(select Nutri.RegistroProfissional from VW_SOS_ASS_PADRAO Nutri where unidade = b.idhealthprovider and Nutri.keyindex  = 3) Nutri_Registro_Padrao,
+			(select Nutri.IDASSINATURA from VW_SOS_ASS_PADRAO Nutri where unidade = b.idhealthprovider and Nutri.keyindex  = 3) Nutri_ASS_Padrao,
+
+			(select upper(TerOcp.Profissional) from VW_SOS_ASS_PADRAO TerOcp where TerOcp.unidade = b.idhealthprovider and TerOcp.keyindex  = 8) TO_Padrao,
+			(select TerOcp.RegistroProfissional from VW_SOS_ASS_PADRAO TerOcp where TerOcp.unidade = b.idhealthprovider and TerOcp.keyindex  = 8) TO_Registro_Padrao,
+			(select TerOcp.IDASSINATURA from VW_SOS_ASS_PADRAO TerOcp where TerOcp.unidade = b.idhealthprovider and TerOcp.keyindex  = 8) TO_ASS_Padrao,
+
+a.SOS_DESCRICAO
+
+
+
+from td_sosrelatorios a (nolock) join capadmission b (nolock) on (b.id = a.idreference)
+								 left join 	(select l.id, l.name, n.idperson, n.RegistryNumber, IDImageSign
+											 from glbphysician l (nolock) join glbprofessional n (nolock) on (n.RegistryNumber = l.RegistryNumber)
+																		  join glbperson m (nolock) on (n.idperson = m.id)
+											 where
+												n.RegistryNumber <> '.'
+											) z on (z.id = b.IDPhysician)
+								 join glbpatient c (nolock) on (c.id = b.idpatient)
+								 join glbperson d (nolock) on (d.id = c.idperson)
+								 join glbenterprise e (nolock) on (e.id = b.identerprise)
+								 join ifrconstantitem f (nolock) on (f.idconstant = 327 and f.keyindex = b.ATTENDANCEPROGRAM)
+								 join ifrconstantitem g (nolock) on (g.idconstant = 1057 and g.keyindex = a.SOS_DESCRICAO)
+								 join ifrconstantitem h (nolock) on (h.idconstant = 818 and h.keyindex = d.gender)
+								 left join capbudget i (nolock) on (i.idadmission = b.id and
+																	  i.id = (select max(id)
+																			from capbudget
+																			where
+																				canceled = 0
+																				and a.eventdate between startdate+' 00:00:00'
+																				and enddate+'23:59:59' and idadmission = b.id
+																			)
+																	 )
+								 left join scccode j (nolock) on (j.id = i.SCComplexityLevel)
+								 join scccode o (nolock) on (o.id = b.SCDiagnostic1)
+								 join glbHealthProvider p (nolock) on (p.id = b.IDHealthProvider)
+								 join (select  a.UNIDADE, g.keyindex,  a.referencia IDReferencia, g.Translation Referencia, j.translation Cargo, a.IDReference, b.name Profissional,
+											i.translation +': '+convert(varchar,h.registrynumber) RegistroProfissional, b.IDImageSign IDASSINATURA, h.scspeciality
+									   from TD_ASSINATURAS A (NOLOCK) JOIN GlbPerson B (NOLOCK) ON (B.ID = A.IDREFERENCE)
+																	  left join glbprofessional h (nolock) on (h.IDPerson = b.id)
+																	  left join TD_SOS_CORRELACAO_ESP f (nolock) on (f.idreference = h.scspeciality)
+																	  left join ifrconstantitem g (nolock) on (g.IDConstant = 1145 and g.KeyIndex = f.ID_DE_PARA)
+																	  left join ifrconstantitem i (nolock) on (i.idconstant = 182 and i.keyindex = h.registrytype)
+																	  left join ifrconstantitem j (nolock) on (j.idconstant = 954 and j.keyindex = b.sos_cargo)
+									  where
+										 g.keyindex = 1
+										 and a.referencia = 1
+									 ) Assinaturas on (Assinaturas.UNIDADE = b.IDHealthProvider)
+
+where
+	a.id = $P{ID}
