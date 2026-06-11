@@ -1,0 +1,738 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="IndicadoresResumo" language="groovy" pageWidth="842" pageHeight="595" orientation="Landscape" columnWidth="802" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
+	<style name="SubTitle" forecolor="#736343" fontName="Arial" fontSize="18"/>
+	<style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true"/>
+	<style name="Detail" fontName="Arial" fontSize="12"/>
+	<style name="Row" mode="Transparent">
+		<conditionalStyle>
+			<conditionExpression><![CDATA[$V{REPORT_COUNT}%2 == 0]]></conditionExpression>
+			<style backcolor="#E6DAC3"/>
+		</conditionalStyle>
+	</style>
+	<style name="Crosstab Data Text" hAlign="Center"/>
+	<subDataset name="dataset1"/>
+	<parameter name="CUSTOMER_LOGOTYPE_URL" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="Empresa" class="java.lang.String">
+		<defaultValueExpression><![CDATA["0"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="mes" class="java.lang.String">
+		<defaultValueExpression><![CDATA["02"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="ano" class="java.lang.String">
+		<defaultValueExpression><![CDATA["2019"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="Unidade" class="java.lang.String">
+		<property name="TYPE" value="#SQL"/>
+		<property name="SQL_COMMAND" value="select keyindex ID, translation Name from ifrconstantitem where idconstant = 680 and keyindex not in (0,3,4) order by name"/>
+		<defaultValueExpression><![CDATA["1"]]></defaultValueExpression>
+	</parameter>
+	<queryString>
+		<![CDATA[declare @ano int, @mes varchar(2), @empresa varchar(10), @Unidade int
+
+set @ano = $P{ano}
+set @mes = $P{mes}
+set @empresa = $P{Empresa}
+set @Unidade = $P{Unidade}
+
+select *
+from (
+		select distinct base.seq, 1 Grupo,
+			  case when a.indicador is null then case when len(base.seq) = 1 then '0'+convert(varchar,base.seq)
+													  else convert(varchar,base.seq)
+												 end +' - '+base.Indicador
+				   else a.Indicador
+			  end Indicador,
+			  a.Regime, a.Tipo, a.outros, a.Qtde
+
+		from (select distinct SEQ, INDICADOR  from td_indicadores_captacao (nolock)) base
+			  join
+					  (
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador indicador, a.outros4 Regime, count(1) Qtde, a.outros7 Tipo, '' outros
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend)
+													   join glbenterprise c on (c.id = b.identerprise)
+						where
+							ano = @ano  and
+							mes = case when len(@mes) = 1 then '0'+@mes else @mes end  and
+							(c.id = @empresa or @empresa = '0')
+							and seq = 7
+							and a.idunidade = @unidade
+
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador , a.outros4, a.outros7
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, '' Outros2, count(1) Qtde, a.outros7 Tipo, a.outros4
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend)
+													   join glbenterprise c on (c.id = b.identerprise)
+						where ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 1
+							  and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, a.outros7, a.outros4
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, '' Outros2, count(1) Qtde, a.outros7 Tipo, a.outros3
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend)
+													   join glbenterprise c on (c.id = b.identerprise)
+						where ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 2
+							  and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, a.outros7, a.outros3
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, '' Outros2, count(1) Qtde, outros7 Tipo, outros4 outros
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend)
+													   join glbenterprise c on (c.id = b.identerprise)
+						where ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 3
+							  and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros7,outros4
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, '' Outros2, count(1) Qtde, outros7 Tipo, outros4 outros
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend)
+													   join glbenterprise c on (c.id = b.identerprise)
+						where ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 4
+							  and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros7, outros4
+
+
+						union all
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, Outros2 Regime/*empresa*/, count(1) Qtde, '' Tipo, outros4 outros/*Diaria_Inicial*/
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend)
+													   join glbenterprise c on (c.id = b.identerprise)
+						where ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 5
+							  and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros2, outros4
+
+						union all
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador,  Outros2 empresa, count(1) Qtde, outros7 outros, outros4 Diaria_Inicial
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 6
+							  and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros4,outros2, outros7
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros4 Origem, count(1) Qtde, outros7 Tipo, outros5 Outros
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where
+							ano = @ano  and
+							mes = case when len(@mes) = 1 then '0'+@mes else @mes end  and
+							empresa = @empresa
+							and seq = 8
+							and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros4, outros7, outros5
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, Outros4 outros, count(1) Qtde, outros7 Tipo, outros5 outros
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 9
+							  and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros7,Outros4, outros5
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, Outros2 Operadora, count(1) Qtde, '' outros7, '' outros
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 10
+							  and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros2
+
+						union all
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, Outros2 Operadora, sum(convert(int,outros6)) Qtde, outros7 Tipo, '' outros
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where
+							ano = @ano and
+							mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							empresa = @empresa
+							and seq = 11
+							and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, Outros2, outros7, outros6
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, Outros2 Operadora, count(outros5) Qtde, outros7 Tipo, outros6 outros
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where
+							ano = @ano and
+							mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							empresa = @empresa
+							and seq = 12
+							and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, Outros2, outros7, outros5, outros6
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, Outros2 Operadora, sum(convert(int,outros4)) Qtde, outros7 Tipo, outros6 outros
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where
+							ano = @ano and
+							mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							empresa = @empresa
+							and seq = 13
+							and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, Outros2, outros7, outros4, outros6
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, Outros4 Outros, count(1) Qtde, outros7 Tipo, '' outros
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 14
+							  and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros7, Outros4
+
+						union
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, Outros4 Outros, count(1) Qtde, outros7 Tipo, '' outros
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 15
+							  and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros7, outros4
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros7 Diaria_Inicial, count(1) Qtde, outros2 Empresa, outros4 Motivo
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where
+							ano = @ano  and
+							mes = case when len(@mes) = 1 then '0'+@mes else @mes end  and
+							empresa = @empresa
+							and seq = 16
+							and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros4, outros2, outros7
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, '' outros, count(outros1) Qtde, '' outros7, Outros2 Empresa
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 17
+							  and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, Outros2
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, Paciente Regime, sum(convert(int,outros3)) Qtde, '' outros7, '' outros
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where
+							ano = @ano  and
+							mes = case when len(@mes) = 1 then '0'+@mes else @mes end  and
+							empresa = @empresa
+							and seq = 18
+							and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, Paciente
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, '' Outros2, count(1) Qtde, '' outros7, '' outros
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 19
+							  and a.idunidade = @unidade
+
+						group by a.seq, a.Indicador
+
+						union all
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, '' Outros2, count(1) Qtde, '' outros7, '' outros
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 20
+							  and a.idunidade = @unidade
+
+						group by a.seq, a.Indicador
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, '' outros, avg(convert(int,outros4)) Outros2, '' outros4, Outros1 empresa
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 21
+							  and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros1
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros1 Data,  count(paciente) Qtde,   paciente Paciente, Outros2 empresa
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 22
+							  and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros2, paciente, outros1
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros1 Data, count(paciente) Qtde, paciente Paciente, Outros2 empresa
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 23
+							  and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros2, paciente, outros1
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, Outros2 empresa, count(paciente) Qtde, paciente Paciente, outros4 Regime
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 24
+							  and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros2, paciente, outros4
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros1 Data, count(paciente) Qtde, paciente, Outros2+' - '+Outros5 empresa
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where
+							  ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 25
+							  and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros2, paciente, outros1, Outros5
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, empresa Regime, count(outros2) Qtde,  paciente Data, outros1 outros
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where
+							  ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  seq = 26
+							  and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, empresa, paciente, outros1
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador,  convert(varchar,sum(convert(float,outros4))/count(outros4)) Data,
+							  count(outros2) Qtde,  empresa Empresa,  outros1 Regime
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where
+							  ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  seq = 27
+							  and a.idunidade = @unidade
+
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, empresa,  outros1
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador,  convert(varchar,sum(convert(float,outros4))/count(outros4))  Data, count(outros2) Qtde,
+								empresa Empresa, outros1 Regime
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where
+							  ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  seq = 28
+							  and a.idunidade = @unidade
+
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, empresa,  outros1
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, Outros4 Outros, count(1) Qtde, outros7 Tipo, '' outros
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 29
+							  and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros7, Outros4
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros1 Convenio, count(1) Qtde, outros3 Regime,  outros4 Status
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 30
+							  and a.idunidade = @unidade
+						group by a.seq, a.Indicador,outros1, Outros4, Outros3
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros1 Convenio, count(1) Qtde, outros2 Hosp_origem,  outros5 Status
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 31
+							  and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros1, Outros2, Outros5
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros1 Convenio, count(1) Qtde, outros2 Hosp_origem,
+							   outros5 Tipo
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 32
+							  and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros1, Outros2, Outros5
+
+						union all
+
+
+						select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros1 Convenio, count(1) Qtde, outros2 Hosp_origem,
+							   outros5 Tipo
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where ano = @ano and
+							  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+							  (c.id = @empresa or @empresa = '0') and
+							  seq = 33
+							  and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros1, Outros2, Outros5
+
+						union all
+
+
+						select seq,  indicador, convenio,  round(convert(float,media),3), convert(varchar,qtde) qtde,  convert(varchar,dias)
+						from (select distinct a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador Indicador, outros1 Convenio, count(paciente) Qtde,
+								sum (case when outros4 is null then 0 else outros4 end) dias,
+								round(convert(float,sum (case when outros4 is null then 0 else outros4 end)) / convert(float,count(paciente)),2) Media
+							  from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+							  where ano = @ano and
+								  mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+								  (c.id = @empresa or @empresa = '0') and
+								  seq = 34 and
+								  outros3 is not null
+								  and a.idunidade = @unidade
+							  group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros1
+							 ) a
+
+						union all
+
+
+						select  a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros1 empresa, count(outros3) Qtd, outros3 Tipo, '' Outros
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where
+						   ano = @ano and
+						   mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+						   (c.id = @empresa or @empresa = '0') and
+						   seq = 35 and
+						   outros3 is not null
+						   and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros1 , outros3
+
+						union all
+
+
+						select  a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros1 empresa, count(outros3) Qtd, outros3 Tipo, '' Outros
+						from td_indicadores_captacao a join capadmission b on (b.id = a.atend) join glbenterprise c on (c.id = b.identerprise)
+						where
+						   ano = @ano and
+						   mes = case when len(@mes) = 1 then '0'+@mes else @mes end and
+						   (c.id = @empresa or @empresa = '0') and
+						   seq = 36 and
+						   outros3 is not null
+						   and a.idunidade = @unidade
+						group by a.seq, case len(a.seq) when 1 then '0'+convert(varchar,a.seq) else convert(varchar,a.seq) end+' - '+a.Indicador, outros1 , outros3
+
+					) a on (a.seq = base.seq)
+	) base]]>
+	</queryString>
+	<field name="seq" class="java.lang.Integer"/>
+	<field name="Grupo" class="java.lang.Integer"/>
+	<field name="Indicador" class="java.lang.String"/>
+	<field name="Regime" class="java.lang.String"/>
+	<field name="Tipo" class="java.lang.String"/>
+	<field name="outros" class="java.lang.String"/>
+	<field name="Qtde" class="java.lang.Double"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<pageHeader>
+		<band splitType="Stretch"/>
+	</pageHeader>
+	<summary>
+		<band height="73">
+			<crosstab>
+				<reportElement x="0" y="0" width="768" height="73"/>
+				<crosstabHeaderCell>
+					<cellContents>
+						<staticText>
+							<reportElement style="Crosstab Data Text" x="0" y="0" width="631" height="30"/>
+							<textElement verticalAlignment="Middle">
+								<font size="15" isBold="true"/>
+							</textElement>
+							<text><![CDATA[Dados Consolidados]]></text>
+						</staticText>
+					</cellContents>
+				</crosstabHeaderCell>
+				<rowGroup name="Indicador" width="176" totalPosition="End">
+					<bucket>
+						<bucketExpression class="java.lang.String"><![CDATA[$F{Indicador}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents backcolor="#F0F8FF" mode="Opaque">
+							<box>
+								<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+							</box>
+							<textField isStretchWithOverflow="true" isBlankWhenNull="false">
+								<reportElement style="Crosstab Data Text" stretchType="RelativeToBandHeight" x="0" y="0" width="176" height="31" isPrintWhenDetailOverflows="true"/>
+								<textElement verticalAlignment="Middle"/>
+								<textFieldExpression class="java.lang.String"><![CDATA[$V{Indicador}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents backcolor="#005FB3" mode="Opaque">
+							<box>
+								<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+							</box>
+						</cellContents>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<rowGroup name="Empresa" width="173" totalPosition="End">
+					<bucket>
+						<bucketExpression class="java.lang.String"><![CDATA[$F{outros}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents backcolor="#F0F8FF" mode="Opaque">
+							<box>
+								<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+							</box>
+							<textField isStretchWithOverflow="true" isBlankWhenNull="false">
+								<reportElement style="Crosstab Data Text" stretchType="RelativeToBandHeight" x="0" y="0" width="173" height="15" isPrintWhenDetailOverflows="true"/>
+								<textElement verticalAlignment="Middle"/>
+								<textFieldExpression class="java.lang.String"><![CDATA[($V{Empresa} == null) ? "-----" : $V{Empresa}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents backcolor="#BFE1FF" mode="Opaque">
+							<box>
+								<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+							</box>
+							<staticText>
+								<reportElement x="0" y="0" width="455" height="16"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle"/>
+								<text><![CDATA[Total Geral:]]></text>
+							</staticText>
+						</cellContents>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<rowGroup name="Tipo" width="100">
+					<bucket>
+						<bucketExpression class="java.lang.String"><![CDATA[$F{Tipo}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents>
+							<textField isStretchWithOverflow="true" isBlankWhenNull="false">
+								<reportElement style="Crosstab Data Text" stretchType="RelativeToBandHeight" mode="Opaque" x="0" y="0" width="100" height="15" isPrintWhenDetailOverflows="true" backcolor="#F0F8FF"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement verticalAlignment="Middle"/>
+								<textFieldExpression class="java.lang.String"><![CDATA[($V{Tipo} == null) ? "-----" : $V{Tipo}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents/>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<rowGroup name="Regime" width="182">
+					<bucket>
+						<bucketExpression class="java.lang.String"><![CDATA[$F{Regime}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents>
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement style="Crosstab Data Text" stretchType="RelativeToBandHeight" mode="Opaque" x="0" y="0" width="182" height="15" isPrintWhenDetailOverflows="true" backcolor="#F0F8FF"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement verticalAlignment="Middle"/>
+								<textFieldExpression class="java.lang.String"><![CDATA[($V{Regime} == null) ? "-----" : $V{Regime}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents/>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<columnGroup name="Grupo" height="30" totalPosition="End">
+					<bucket>
+						<bucketExpression class="java.lang.Integer"><![CDATA[$F{Grupo}]]></bucketExpression>
+					</bucket>
+					<crosstabColumnHeader>
+						<cellContents backcolor="#F0F8FF" mode="Opaque">
+							<box>
+								<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+							</box>
+							<staticText>
+								<reportElement style="Crosstab Data Text" x="0" y="0" width="50" height="30"/>
+								<textElement verticalAlignment="Middle"/>
+								<text><![CDATA[Total]]></text>
+							</staticText>
+						</cellContents>
+					</crosstabColumnHeader>
+					<crosstabTotalColumnHeader>
+						<cellContents backcolor="#BFE1FF" mode="Opaque">
+							<box>
+								<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+							</box>
+						</cellContents>
+					</crosstabTotalColumnHeader>
+				</columnGroup>
+				<measure name="QtdeMeasure" class="java.lang.Double" calculation="Sum">
+					<measureExpression><![CDATA[$F{Qtde}]]></measureExpression>
+				</measure>
+				<crosstabCell width="50" height="15">
+					<cellContents>
+						<box>
+							<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						</box>
+						<textField isStretchWithOverflow="true" isBlankWhenNull="false">
+							<reportElement style="Crosstab Data Text" stretchType="RelativeToBandHeight" x="0" y="0" width="50" height="15" isPrintWhenDetailOverflows="true"/>
+							<textElement verticalAlignment="Middle"/>
+							<textFieldExpression class="java.lang.Float"><![CDATA[$V{QtdeMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell height="0" rowTotalGroup="Indicador">
+					<cellContents backcolor="#005FB3" mode="Opaque">
+						<box>
+							<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						</box>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="0" height="15" columnTotalGroup="Grupo">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<box>
+							<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						</box>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="0" height="0" rowTotalGroup="Indicador" columnTotalGroup="Grupo">
+					<cellContents backcolor="#005FB3" mode="Opaque">
+						<box>
+							<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						</box>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell height="16" rowTotalGroup="Empresa">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<box>
+							<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						</box>
+						<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+							<reportElement style="Crosstab Data Text" stretchType="RelativeToBandHeight" x="0" y="0" width="50" height="16" isPrintWhenDetailOverflows="true"/>
+							<textElement verticalAlignment="Middle"/>
+							<textFieldExpression class="java.lang.Integer"><![CDATA[$V{QtdeMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="0" height="16" rowTotalGroup="Empresa" columnTotalGroup="Grupo">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<box>
+							<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						</box>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell rowTotalGroup="Tipo">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell rowTotalGroup="Tipo" columnTotalGroup="Grupo">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell rowTotalGroup="Regime">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell rowTotalGroup="Regime" columnTotalGroup="Grupo">
+					<cellContents/>
+				</crosstabCell>
+			</crosstab>
+		</band>
+	</summary>
+</jasperReport>

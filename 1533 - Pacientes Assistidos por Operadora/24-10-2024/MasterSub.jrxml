@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Pacientes Assistidos" language="groovy" pageWidth="595" pageHeight="842" columnWidth="595" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0">
+	<property name="ireport.zoom" value="1.5"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
+	<style name="SubTitle" forecolor="#736343" fontName="Arial" fontSize="18"/>
+	<style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true"/>
+	<style name="Detail" fontName="Arial" fontSize="12"/>
+	<style name="Row" mode="Transparent">
+		<conditionalStyle>
+			<conditionExpression><![CDATA[$V{REPORT_COUNT}%2 == 0]]></conditionExpression>
+			<style backcolor="#E6DAC3"/>
+		</conditionalStyle>
+	</style>
+	<style name="Crosstab Data Text" hAlign="Center"/>
+	<parameter name="CUSTOMER_LOGOTYPE_URL" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="Mes" class="java.lang.String">
+		<property name="TYPE" value="#DATE"/>
+		<property name="LABEL" value="Data Inicial"/>
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="Ano" class="java.lang.String">
+		<property name="TYPE" value="#DATE"/>
+		<property name="LABEL" value="Data Final"/>
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="Unidade" class="java.lang.String">
+		<property name="TYPE" value="#SQL"/>
+		<property name="SQL_COMMAND" value="select keyindex ID, translation Name from ifrconstantitem  where idconstant = 680 and canceled = 0 and keyindex not in (3) order by name"/>
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<queryString>
+		<![CDATA[set dateformat dmy;
+
+select 	distinct a.PROGRAMA,a.EMPRESA, a.ATENDIMENTO, a.Ano, b.translation mes, f.name Unidade
+from td_pac_assistidos  a (nolock) join ifrconstantitem b (nolock) on (b.idconstant = 967 and b.keyindex = a.mes)
+			    join capadmission c (nolock) on (c.id = a.ATENDIMENTO)
+			    join glbpatient d (nolock) on (d.id = c.idpatient)
+			    join glbperson e (nolock) on (e.id = d.idperson)
+			    join glbhealthprovider f (nolock) on (f.id = e.idhealthprovider)
+where
+	ano = $P{Ano}
+	and mes = $P{Mes}
+	and f.id = $P{Unidade}
+order by ano ,mes]]>
+	</queryString>
+	<field name="PROGRAMA" class="java.lang.String"/>
+	<field name="EMPRESA" class="java.lang.String"/>
+	<field name="ATENDIMENTO" class="java.lang.Integer"/>
+	<field name="Ano" class="java.lang.Integer"/>
+	<field name="mes" class="java.lang.String"/>
+	<field name="Unidade" class="java.lang.String"/>
+	<variable name="Programa_1" class="java.lang.Integer" resetType="Group" resetGroup="Programa" calculation="Count">
+		<variableExpression><![CDATA[$F{ATENDIMENTO}]]></variableExpression>
+	</variable>
+	<variable name="Programa_2" class="java.lang.Integer" calculation="Count">
+		<variableExpression><![CDATA[$F{ATENDIMENTO}]]></variableExpression>
+	</variable>
+	<variable name="ATENDIMENTO_1" class="java.lang.Integer" calculation="Count">
+		<variableExpression><![CDATA[$F{ATENDIMENTO}]]></variableExpression>
+	</variable>
+	<group name="Programa">
+		<groupExpression><![CDATA[$F{PROGRAMA}]]></groupExpression>
+		<groupFooter>
+			<band height="12">
+				<textField>
+					<reportElement x="0" y="0" width="324" height="12"/>
+					<box>
+						<topPen lineWidth="0.5"/>
+						<bottomPen lineWidth="0.5"/>
+					</box>
+					<textElement verticalAlignment="Middle" markup="html">
+						<font size="8"/>
+					</textElement>
+					<textFieldExpression class="java.lang.String"><![CDATA[$F{PROGRAMA}.equals("Não informado")?"<b><font color = FF0000>"+$F{PROGRAMA}+"</b></font>":$F{PROGRAMA}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="324" y="0" width="231" height="12"/>
+					<box>
+						<topPen lineWidth="0.5"/>
+						<bottomPen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font size="8"/>
+					</textElement>
+					<textFieldExpression class="java.lang.Integer"><![CDATA[$V{Programa_1}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupFooter>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="91">
+			<image onErrorType="Blank">
+				<reportElement style="Title" x="6" y="10" width="132" height="39">
+					<property name="TYPE" value="#IMAGE_FROM_DATABASE"/>
+				</reportElement>
+				<imageExpression class="java.lang.String"><![CDATA["9527"]]></imageExpression>
+			</image>
+			<textField>
+				<reportElement style="Title" x="171" y="27" width="230" height="31"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle" markup="none">
+					<font fontName="Comic Sans MS" size="14" pdfFontName="Times-Roman"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Resumo\nUnidade: "+$F{Unidade}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="2" y="73" width="60" height="13"/>
+				<textElement/>
+				<text><![CDATA[Período:]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="67" y="73" width="334" height="13"/>
+				<textElement/>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{Ano} + " / " + $F{mes}]]></textFieldExpression>
+			</textField>
+		</band>
+	</title>
+	<columnHeader>
+		<band height="14">
+			<staticText>
+				<reportElement x="0" y="0" width="324" height="14"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Programa de Atenção]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="324" y="0" width="231" height="14"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Qtd.]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<summary>
+		<band height="120">
+			<crosstab>
+				<reportElement x="90" y="24" width="465" height="96"/>
+				<crosstabHeaderCell>
+					<cellContents>
+						<staticText>
+							<reportElement style="Crosstab Data Text" x="0" y="0" width="308" height="30"/>
+							<textElement verticalAlignment="Middle">
+								<font size="12" isBold="true"/>
+							</textElement>
+							<text><![CDATA[Convênio]]></text>
+						</staticText>
+					</cellContents>
+				</crosstabHeaderCell>
+				<rowGroup name="Empresa" width="308" totalPosition="End">
+					<bucket>
+						<bucketExpression class="java.lang.String"><![CDATA[$F{EMPRESA}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents backcolor="#F0F8FF" mode="Opaque">
+							<box>
+								<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+							</box>
+							<textField>
+								<reportElement style="Crosstab Data Text" x="0" y="1" width="308" height="13"/>
+								<textElement textAlignment="Left" verticalAlignment="Middle">
+									<font size="8"/>
+								</textElement>
+								<textFieldExpression class="java.lang.String"><![CDATA[$V{Empresa}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents backcolor="#BFE1FF" mode="Opaque">
+							<box>
+								<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+							</box>
+							<staticText>
+								<reportElement x="0" y="0" width="308" height="25"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle"/>
+								<text><![CDATA[Total Geral]]></text>
+							</staticText>
+						</cellContents>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<columnGroup name="qtde" height="30" totalPosition="End">
+					<bucket>
+						<bucketExpression class="java.lang.Integer"><![CDATA[$V{ATENDIMENTO_1}]]></bucketExpression>
+					</bucket>
+					<crosstabColumnHeader>
+						<cellContents backcolor="#F0F8FF" mode="Opaque">
+							<box>
+								<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+							</box>
+							<textField>
+								<reportElement style="Crosstab Data Text" x="0" y="0" width="0" height="30" forecolor="#FFFFFF"/>
+								<textElement/>
+								<textFieldExpression class="java.lang.Integer"><![CDATA[$V{qtde}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabColumnHeader>
+					<crosstabTotalColumnHeader>
+						<cellContents backcolor="#BFE1FF" mode="Opaque">
+							<box>
+								<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+							</box>
+							<staticText>
+								<reportElement x="0" y="0" width="50" height="30"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle"/>
+								<text><![CDATA[Total de Pacientes]]></text>
+							</staticText>
+						</cellContents>
+					</crosstabTotalColumnHeader>
+				</columnGroup>
+				<measure name="qtdeMeasure" class="java.lang.Integer" calculation="Count">
+					<measureExpression><![CDATA[$F{ATENDIMENTO}]]></measureExpression>
+				</measure>
+				<crosstabCell width="0" height="14">
+					<cellContents>
+						<box>
+							<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						</box>
+						<textField>
+							<reportElement style="Crosstab Data Text" x="0" y="0" width="0" height="14" forecolor="#FFFFFF"/>
+							<textElement/>
+							<textFieldExpression class="java.lang.Integer"><![CDATA[$V{qtdeMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="0" height="25" rowTotalGroup="Empresa">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<box>
+							<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						</box>
+						<textField>
+							<reportElement style="Crosstab Data Text" x="0" y="0" width="0" height="25" forecolor="#FFFFFF"/>
+							<textElement/>
+							<textFieldExpression class="java.lang.Integer"><![CDATA[$V{qtdeMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="50" height="14" columnTotalGroup="qtde">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<box>
+							<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						</box>
+						<textField>
+							<reportElement style="Crosstab Data Text" x="0" y="0" width="50" height="14"/>
+							<textElement verticalAlignment="Middle"/>
+							<textFieldExpression class="java.lang.Integer"><![CDATA[$V{qtdeMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell height="25" rowTotalGroup="Empresa" columnTotalGroup="qtde">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<box>
+							<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						</box>
+						<textField>
+							<reportElement style="Crosstab Data Text" x="0" y="0" width="50" height="25"/>
+							<textElement verticalAlignment="Middle"/>
+							<textFieldExpression class="java.lang.Integer"><![CDATA[$V{qtdeMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+			</crosstab>
+			<textField>
+				<reportElement x="324" y="0" width="231" height="12"/>
+				<textElement textAlignment="Right">
+					<font size="8"/>
+				</textElement>
+				<textFieldExpression class="java.lang.Integer"><![CDATA[$V{Programa_2}]]></textFieldExpression>
+			</textField>
+		</band>
+	</summary>
+</jasperReport>

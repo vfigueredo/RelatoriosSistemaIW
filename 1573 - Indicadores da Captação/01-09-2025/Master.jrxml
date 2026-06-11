@@ -1,0 +1,542 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="1573 - Indicadores Captação" language="groovy" pageWidth="842" pageHeight="595" orientation="Landscape" whenNoDataType="NoDataSection" columnWidth="802" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
+	<property name="ireport.zoom" value="2.1435888100000016"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="117"/>
+	<property name="IW_REPORTER_TIMEOUT" value="50000"/>
+	<style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
+	<style name="SubTitle" forecolor="#736343" fontName="Arial" fontSize="18"/>
+	<style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true"/>
+	<style name="Detail" fontName="Arial" fontSize="12"/>
+	<style name="Row" mode="Transparent">
+		<conditionalStyle>
+			<conditionExpression><![CDATA[$V{REPORT_COUNT}%2 == 0]]></conditionExpression>
+			<style backcolor="#E6DAC3"/>
+		</conditionalStyle>
+	</style>
+	<style name="Crosstab Data Text" hAlign="Center"/>
+	<parameter name="CUSTOMER_LOGOTYPE_URL" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="Empresa" class="java.lang.String">
+		<property name="TYPE" value="#SQL"/>
+		<property name="SQL_COMMAND" value="select 0 ID, &apos; Todos&apos; Name union select distinct c.id ID , upper(c.name) NAME from td_indicadores_captacao a join capadmission b on (b.id = a.atend)           join glbenterprise c on (c.id = b.identerprise) order by name"/>
+		<property name="LABEL" value="Selecione a Empresa"/>
+		<defaultValueExpression><![CDATA["0"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="mes" class="java.lang.String">
+		<property name="TYPE" value="#SQL"/>
+		<property name="SQL_COMMAND" value="select distinct mes ID, mes name from td_indicadores_captacao where len(mes) = 2 order by mes"/>
+		<property name="LABEL" value="Selecione o mes"/>
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="ano" class="java.lang.String">
+		<property name="TYPE" value="#SQL"/>
+		<property name="SQL_COMMAND" value="select distinct ano ID, ano name from td_indicadores_captacao order by ano desc"/>
+		<property name="LABEL" value="Selecione o ano"/>
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="Unidade" class="java.lang.String">
+		<property name="TYPE" value="#SQL"/>
+		<property name="SQL_COMMAND" value="select keyindex ID, translation Name from ifrconstantitem where idconstant = 680 and keyindex not in (0,3,4) order by name"/>
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["C:\\Users\\hamilton\\Desktop\\Escala Geral\\"]]></defaultValueExpression>
+	</parameter>
+	<queryString>
+		<![CDATA[declare @ano int, @mes int, @empresa int, @unidade int
+
+set @ano = $P{ano}
+set @mes = $P{mes}
+set @empresa  = $P{Empresa}
+set @unidade = $P{Unidade}
+
+select distinct Row_number() over(Order by base.seq, base.indicador, a.ano, a.mes, a.paciente) Num,
+		base.SEQ,
+		case when e.PatientAgeyear <= 14 and base.seq = 30 then base.INDICADOR+' - Pediatria'
+			 when e.PatientAgeyear > 14 and base.seq = 30 then base.INDICADOR+' - Adultos'
+			 when e.PatientAgeyear <= 14 and base.seq = 01 then base.INDICADOR+' - Pediatria'
+			 when e.PatientAgeyear > 14 and base.seq = 01 then base.INDICADOR+' - Adultos'
+			 when e.PatientAgeyear <= 14 and base.seq = 7 then base.INDICADOR+' - Pediatria'
+			 when e.PatientAgeyear > 14 and base.seq = 7 then base.INDICADOR+' - Adultos'
+			 when e.PatientAgeyear <= 14 and base.seq = 10 then base.INDICADOR+' - Pediatria'
+			 when e.PatientAgeyear > 14 and base.seq = 10 then base.INDICADOR+' - Adultos'
+			 else base.INDICADOR
+		end INDICADOR,
+		d.id IDUNIDADE, D.NAME UnidadeOperacional
+,case when A.EMPRESA is null then '--' else convert(varchar,A.EMPRESA ) end EMPRESA
+,case when A.ANO is null then '--' else convert(varchar,A.ANO ) end  ANO
+,case when A.MES is null then '--' else convert(varchar, A.MES) end  MES
+,case when A.ATEND is null then '--' else convert(varchar,A.ATEND) end ATEND
+,case when A.PACIENTE is null then '--' else convert(varchar,A.PACIENTE )  end PACIENTE
+,case when A.OUTROS1 is null then '--' else convert(varchar, A.OUTROS1) end OUTROS1
+,case when A.OUTROS2 is null then '--' else convert(varchar, A.OUTROS2) end OUTROS2
+,case when A.OUTROS3 is null then '--' else convert(varchar, A.OUTROS3) end OUTROS3
+,case when A.OUTROS4 is null then '--' else convert(varchar, A.OUTROS4) end OUTROS4
+,case when A.OUTROS5 is null then '--' else convert(varchar, A.OUTROS5) end OUTROS5
+,case when A.OUTROS6 is null then '--' else convert(varchar, A.OUTROS6) end OUTROS6
+,case when A.OUTROS7 is null then '--' else convert(varchar, A.OUTROS7) end OUTROS7
+,case when A.DATA_INICIAL is null then '--' else convert(varchar, A.DATA_INICIAL,103) end DATA_INICIAL
+,case when A.DATA_FINAL is null then '--' else convert(varchar, A.DATA_FINAL,103) end DATA_FINAL
+,case when C.NAME is null then '--' else convert(varchar, C.NAME) end  NAME
+, case when (ANO is null and MES	is null and EMPRESA	is null and a.SEQ	is null and a.INDICADOR	is null and ATEND	is null and PACIENTE is null and
+			OUTROS1	is null and OUTROS2	is null and OUTROS3	is null and OUTROS4	is null and OUTROS5	is null and OUTROS6	is null and OUTROS7	is null and
+			DATA_INICIAL is null and DATA_FINAL	is null and IDUNIDADE is null
+			) then 0 else 1 end Elegibibilidade
+from (select distinct SEQ, INDICADOR from td_indicadores_captacao (nolock)) base left join td_indicadores_captacao a (nolock) on (a.seq = base.seq
+																														          and a.indicador = base.indicador
+																														          and ano = @ano
+																														          and mes = @mes
+																														          and a.idunidade = @unidade
+																														         )
+																				 left join capadmission b (nolock) on (b.id = a.atend)
+																				 join glbenterprise c (nolock) on (c.id = b.identerprise and (c.id = @empresa or @empresa = '0'))
+																				 left join glbhealthprovider d (nolock) on (d.id = a.idunidade or d.id = @unidade)
+																				 left join CapAdmission e (nolock) on (e.id = A.ATEND and base.seq in (30,1,7,10))
+
+
+order by SEQ, Indicador asc]]>
+	</queryString>
+	<field name="Num" class="java.lang.Long"/>
+	<field name="SEQ" class="java.lang.Integer"/>
+	<field name="INDICADOR" class="java.lang.String"/>
+	<field name="IDUNIDADE" class="java.lang.Integer"/>
+	<field name="UnidadeOperacional" class="java.lang.String"/>
+	<field name="EMPRESA" class="java.lang.String"/>
+	<field name="ANO" class="java.lang.String"/>
+	<field name="MES" class="java.lang.String"/>
+	<field name="ATEND" class="java.lang.String"/>
+	<field name="PACIENTE" class="java.lang.String"/>
+	<field name="OUTROS1" class="java.lang.String"/>
+	<field name="OUTROS2" class="java.lang.String"/>
+	<field name="OUTROS3" class="java.lang.String"/>
+	<field name="OUTROS4" class="java.lang.String"/>
+	<field name="OUTROS5" class="java.lang.String"/>
+	<field name="OUTROS6" class="java.lang.String"/>
+	<field name="OUTROS7" class="java.lang.String"/>
+	<field name="DATA_INICIAL" class="java.lang.String"/>
+	<field name="DATA_FINAL" class="java.lang.String"/>
+	<field name="NAME" class="java.lang.String"/>
+	<field name="Elegibibilidade" class="java.lang.Integer"/>
+	<variable name="atend_1" class="java.lang.Integer" resetType="Group" resetGroup="Indicador" calculation="Sum">
+		<variableExpression><![CDATA[$F{Elegibibilidade}]]></variableExpression>
+	</variable>
+	<variable name="atend_1_1" class="java.lang.Integer" resetType="Group" resetGroup="Indicador" calculation="Count">
+		<variableExpression><![CDATA[$F{Elegibibilidade}]]></variableExpression>
+	</variable>
+	<variable name="outros4_1" class="java.lang.Integer" resetType="Group" resetGroup="Indicador" calculation="Count">
+		<variableExpression><![CDATA[$F{OUTROS4}.equals("Contra Indicação Clínica")]]></variableExpression>
+	</variable>
+	<group name="Regime">
+		<groupExpression><![CDATA[$F{INDICADOR}]]></groupExpression>
+		<groupFooter>
+			<band height="40">
+				<printWhenExpression><![CDATA[$F{INDICADOR}.equals("Número de novas admissões analítico")]]></printWhenExpression>
+				<line>
+					<reportElement x="-1" y="1" width="801" height="1"/>
+				</line>
+				<subreport>
+					<reportElement x="42" y="3" width="699" height="35"/>
+					<subreportParameter name="Unidade">
+						<subreportParameterExpression><![CDATA[$P{Unidade}]]></subreportParameterExpression>
+					</subreportParameter>
+					<subreportParameter name="mes">
+						<subreportParameterExpression><![CDATA[$P{mes}]]></subreportParameterExpression>
+					</subreportParameter>
+					<subreportParameter name="Empresa">
+						<subreportParameterExpression><![CDATA[$P{Empresa}]]></subreportParameterExpression>
+					</subreportParameter>
+					<subreportParameter name="ano">
+						<subreportParameterExpression><![CDATA[$P{ano}]]></subreportParameterExpression>
+					</subreportParameter>
+					<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+					<subreportExpression class="java.lang.String"><![CDATA["IndicCapta_3_Sub.jasper"]]></subreportExpression>
+				</subreport>
+			</band>
+			<band height="40">
+				<printWhenExpression><![CDATA[$F{INDICADOR}.equals("Número de readmissões")]]></printWhenExpression>
+				<line>
+					<reportElement x="-1" y="1" width="803" height="1"/>
+				</line>
+				<subreport>
+					<reportElement x="42" y="2" width="699" height="35"/>
+					<subreportParameter name="Unidade">
+						<subreportParameterExpression><![CDATA[$P{Unidade}]]></subreportParameterExpression>
+					</subreportParameter>
+					<subreportParameter name="mes">
+						<subreportParameterExpression><![CDATA[$P{mes}]]></subreportParameterExpression>
+					</subreportParameter>
+					<subreportParameter name="Empresa">
+						<subreportParameterExpression><![CDATA[$P{Empresa}]]></subreportParameterExpression>
+					</subreportParameter>
+					<subreportParameter name="ano">
+						<subreportParameterExpression><![CDATA[$P{ano}]]></subreportParameterExpression>
+					</subreportParameter>
+					<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+					<subreportExpression class="java.lang.String"><![CDATA["IndicCapta_4_Sub.jasper"]]></subreportExpression>
+				</subreport>
+				<break>
+					<reportElement x="0" y="36" width="100" height="1"/>
+				</break>
+			</band>
+		</groupFooter>
+	</group>
+	<group name="Indicador">
+		<groupExpression><![CDATA[$F{INDICADOR}]]></groupExpression>
+		<groupHeader>
+			<band height="29">
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement stretchType="RelativeToBandHeight" mode="Opaque" x="1" y="16" width="42" height="13" isPrintWhenDetailOverflows="true" backcolor="#CCCCCC"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.lang.String"><![CDATA["Atend"]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement stretchType="RelativeToBandHeight" mode="Opaque" x="43" y="16" width="207" height="13" isPrintWhenDetailOverflows="true" backcolor="#CCCCCC"/>
+					<textElement verticalAlignment="Middle"/>
+					<textFieldExpression class="java.lang.String"><![CDATA["Paciente"]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement stretchType="RelativeToBandHeight" mode="Opaque" x="250" y="16" width="84" height="13" isPrintWhenDetailOverflows="true" backcolor="#CCCCCC"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.lang.String"><![CDATA[$F{INDICADOR}.equals("Número de readmissões") ? "Nº Pront." :
+$F{INDICADOR}.equals("Admissão com úlcera de pressão") ? "Origem" :
+$F{INDICADOR}.equals("Número de admissão com liminar judicial") ? "Médico Solicitante" :
+$F{INDICADOR}.equals("Número de Não Admissão por Motivo") ? "Ano Captação" :
+$F{INDICADOR}.equals("Admissões Canceladas") ? "Quantidade" :
+$F{INDICADOR}.equals("Número de Não Admissões Mensais") ? "Mês captação" :
+$F{INDICADOR}.equals("Total de Diárias Geradas por Regime") ? "" :
+$F{INDICADOR}.equals("Total de Processos de Prorrogação Elaborados") ? "Quantidade" :
+$F{INDICADOR}.equals("Total de Aditivos Elaborados") ? "Quantidade" :
+$F{INDICADOR}.equals("Tempo Médio de Retorno das Exigências") ? "Empresa" :
+$F{INDICADOR}.equals("Tempo de Implantação") ? "Dt. Autorização" :
+"Dt Registro"]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement stretchType="RelativeToBandHeight" mode="Opaque" x="334" y="16" width="84" height="13" isPrintWhenDetailOverflows="true" backcolor="#CCCCCC"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.lang.String"><![CDATA[$F{INDICADOR}.equals("Total de Processos de Prorrogação Elaborados") ? "" :
+$F{INDICADOR}.equals("Total de Aditivos Elaborados") ? "" :
+$F{INDICADOR}.equals("Tempo Médio de Retorno das Exigências") ? "Abertura" :
+"Empresa"]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement stretchType="RelativeToBandHeight" mode="Opaque" x="418" y="16" width="84" height="13" isPrintWhenDetailOverflows="true" backcolor="#CCCCCC"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.lang.String"><![CDATA[$F{INDICADOR}.equals("Total de Processos Iniciados") ? "Quantidade" :
+$F{INDICADOR}.equals("Total de Processos com Status Avaliação") ? "" :
+$F{INDICADOR}.equals("Total de Processos Avaliados") ? "Quantidade" :
+$F{INDICADOR}.equals("Total de Processos Avaliados com Concorrêcia") ? "Quantidade" :
+$F{INDICADOR}.equals("Número de novas admissões analítico") ? "Dt. Internação" :
+$F{INDICADOR}.equals("Número de readmissões") ? "Dt. do Registro" :
+$F{INDICADOR}.equals("Admissão por regime de assistência") ? "Dt. Internação" :
+$F{INDICADOR}.equals("Admissões por origem") ? "Dt. Internação" :
+$F{INDICADOR}.equals("Admissões com concorrência") ? "Dt. Internação" :
+$F{INDICADOR}.equals("Número de Não Admissões Mensais") ? "Ano" :
+$F{INDICADOR}.equals("Tempo Médio de retorno Avaliação") ? "Dt. Env. Prop." :
+$F{INDICADOR}.equals("Tempo Médio de Envio de Proposta") ? "Dt. Resl. Pend." :
+$F{INDICADOR}.equals("Tempo de Implantação") ? "Dt. Implantação" :
+$F{INDICADOR}.equals("Admissão com úlcera de pressão") ? "" :
+$F{INDICADOR}.equals("Número de admissão com liminar judicial") ? "Diária Inicial" :
+$F{INDICADOR}.equals("Número de Não Admissão por Motivo") ? "Dt. Cancelamento" :
+$F{INDICADOR}.equals("Admissões Canceladas") ? "Dt. do Registro" :
+$F{INDICADOR}.equals("Total de Diárias Geradas por Regime") ? "Quantidade" :
+$F{INDICADOR}.equals("Total de Processos de Prorrogação Elaborados") ? "" :
+$F{INDICADOR}.equals("Total de Aditivos Elaborados") ? "" :
+$F{INDICADOR}.equals("Tempo Médio de Retorno das Exigências") ? "Conclusão" :
+""]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement stretchType="RelativeToBandHeight" mode="Opaque" x="502" y="16" width="84" height="13" isPrintWhenDetailOverflows="true" backcolor="#CCCCCC"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.lang.String"><![CDATA[$F{INDICADOR}.equals("Número de novas admissões analítico") ? "Diária Inicial" :
+$F{INDICADOR}.equals("Tempo de Implantação") ? "Tempo" :
+$F{INDICADOR}.equals("Admissão por regime de assistência") ? "Diária Inicial" :
+$F{INDICADOR}.equals("Admissões por origem") ? "Origem" :
+$F{INDICADOR}.equals("Número de Não Admissões Mensais") ? "Data do Cancelamento" :
+$F{INDICADOR}.equals("Tempo Médio de retorno Avaliação") ? "Dt._1_Retorno" :
+$F{INDICADOR}.equals("Tempo Médio de Envio de Proposta") ? "Dt. Envio Prop." :
+$F{INDICADOR}.equals("Número de Não Admissão por Motivo") ? "Motivo" :
+$F{INDICADOR}.equals("Tempo Médio de Retorno das Exigências") ? "Tempo" :
+""]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement stretchType="RelativeToBandHeight" mode="Opaque" x="586" y="16" width="84" height="13" isPrintWhenDetailOverflows="true" backcolor="#CCCCCC"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.lang.String"><![CDATA[$F{INDICADOR}.equals("Número de readmissões") ? "Dt. Internação" :
+$F{INDICADOR}.equals("Número de Não Admissões Mensais") ? "Quantidade" :
+$F{INDICADOR}.equals("Tempo Médio de retorno Avaliação") ? "Data_Retorno " :
+$F{INDICADOR}.equals("Tempo de Implantação") ? "" :
+$F{INDICADOR}.equals("Número de Não Admissão por Motivo") ? "Motivo" :
+$F{INDICADOR}.equals("Tempo Médio de Envio de Proposta")? "Descrição":
+$F{INDICADOR}.equals("Admissões por origem")? "Tipo Processo":
+""]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement stretchType="RelativeToBandHeight" mode="Opaque" x="670" y="16" width="54" height="13" isPrintWhenDetailOverflows="true" backcolor="#CCCCCC"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.lang.String"><![CDATA[$F{INDICADOR}.equals("Tempo Médio de retorno Avaliação") ? "Tempo" :
+$F{INDICADOR}.equals("Número de Não Admissão por Motivo") ? "Quantidade" :
+$F{INDICADOR}.equals("Tempo Médio de Envio de Proposta") ? "Tipo Processo" :
+$F{INDICADOR}.equals("Tempo de Implantação") ? "Tipo Processo" :
+$F{INDICADOR}.equals("Admissões por origem") ? "Diaria_inical" :
+""]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement stretchType="RelativeToBandHeight" mode="Opaque" x="724" y="16" width="78" height="13" isPrintWhenDetailOverflows="true" backcolor="#CCCCCC"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.lang.String"><![CDATA[$F{SEQ}==1 || $F{SEQ}==2 || $F{SEQ}==3 || $F{SEQ}==4  ||
+$F{SEQ}==7 || $F{SEQ}==9 || $F{SEQ}==10 ||
+$F{SEQ}== 14 || $F{SEQ}==15? "Tipo" :
+$F{SEQ}== 5 || $F{SEQ}==6 || $F{SEQ}==12 || $F{SEQ}==13 || $F{SEQ}==16? "Regime inicial" :
+$F{SEQ}==8? "Hosp. Origem" :
+""]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement mode="Opaque" x="57" y="0" width="745" height="16" backcolor="#CCFFCC"/>
+					<box>
+						<topPen lineWidth="1.0"/>
+					</box>
+					<textElement verticalAlignment="Middle">
+						<font size="12" isBold="true"/>
+					</textElement>
+					<textFieldExpression class="java.lang.String"><![CDATA[$F{SEQ} + " - " + $F{INDICADOR}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupHeader>
+		<groupFooter>
+			<band height="28">
+				<textField>
+					<reportElement x="42" y="4" width="700" height="24"/>
+					<textElement verticalAlignment="Middle">
+						<font isBold="true"/>
+					</textElement>
+					<textFieldExpression class="java.lang.String"><![CDATA[$F{INDICADOR}.equals("Total de Diárias Geradas por Regime") ?
+"" :
+"Total de Registros do Indicador (" + $F{INDICADOR}+ "): " +
+$V{atend_1}]]></textFieldExpression>
+				</textField>
+			</band>
+			<band height="40">
+				<printWhenExpression><![CDATA[$F{INDICADOR}.equals("Número de Não Admissão por Motivo")]]></printWhenExpression>
+				<subreport>
+					<reportElement x="43" y="2" width="699" height="35"/>
+					<subreportParameter name="Unidade">
+						<subreportParameterExpression><![CDATA[$P{Unidade}]]></subreportParameterExpression>
+					</subreportParameter>
+					<subreportParameter name="mes">
+						<subreportParameterExpression><![CDATA[$P{mes}]]></subreportParameterExpression>
+					</subreportParameter>
+					<subreportParameter name="Empresa">
+						<subreportParameterExpression><![CDATA[$P{Empresa}]]></subreportParameterExpression>
+					</subreportParameter>
+					<subreportParameter name="ano">
+						<subreportParameterExpression><![CDATA[$P{ano}]]></subreportParameterExpression>
+					</subreportParameter>
+					<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+					<subreportExpression class="java.lang.String"><![CDATA["IndicCapta_2_Sub.jasper"]]></subreportExpression>
+				</subreport>
+				<line>
+					<reportElement x="1" y="1" width="801" height="1"/>
+				</line>
+			</band>
+		</groupFooter>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="104" splitType="Stretch">
+			<staticText>
+				<reportElement style="Title" x="202" y="1" width="397" height="58"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Comic Sans MS" size="16" pdfFontName="Times-Roman"/>
+				</textElement>
+				<text><![CDATA[Indicadores da Captação]]></text>
+			</staticText>
+			<image onErrorType="Blank">
+				<reportElement style="Title" x="8" y="12" width="132" height="39">
+					<property name="TYPE" value="#IMAGE_FROM_DATABASE"/>
+				</reportElement>
+				<imageExpression class="java.lang.String"><![CDATA["9527"]]></imageExpression>
+			</image>
+			<staticText>
+				<reportElement x="7" y="89" width="76" height="13"/>
+				<textElement>
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Competência:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement style="Title" x="642" y="56" width="146" height="25"/>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Comic Sans MS" size="8" isBold="false" pdfFontName="Times-Roman"/>
+				</textElement>
+				<text><![CDATA[A execução adequada deste relatório depende da consolidação dos dados.]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="83" y="88" width="705" height="13"/>
+				<textElement>
+					<font isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$P{mes} + "/" + $P{ano} + "  Empresa: " +
+( $P{Empresa}.equals("0") ? "Todas" : $F{NAME})]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="681" y="1" width="100" height="20"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Impresso em:]]></text>
+			</staticText>
+			<textField pattern="dd/MM/yyyy HH.mm.ss">
+				<reportElement x="673" y="21" width="115" height="17"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="10" isBold="false"/>
+				</textElement>
+				<textFieldExpression class="java.util.Date"><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement style="Title" x="673" y="41" width="115" height="15"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Comic Sans MS" size="8" isBold="false" pdfFontName="Times-Roman"/>
+				</textElement>
+				<text><![CDATA[Rel.: 1573]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="202" y="59" width="397" height="21"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Unidade: "+$F{UnidadeOperacional}]]></textFieldExpression>
+			</textField>
+		</band>
+	</title>
+	<pageHeader>
+		<band splitType="Stretch"/>
+	</pageHeader>
+	<detail>
+		<band height="10">
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="43" height="10" isPrintWhenDetailOverflows="true"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{ATEND}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="43" y="0" width="207" height="10" isPrintWhenDetailOverflows="true"/>
+				<textElement verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{PACIENTE}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="250" y="0" width="84" height="10" isPrintWhenDetailOverflows="true"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{OUTROS1}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="334" y="0" width="84" height="10" isPrintWhenDetailOverflows="true"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{OUTROS2}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="418" y="0" width="84" height="10" isPrintWhenDetailOverflows="true"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{OUTROS3}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="502" y="0" width="84" height="10" isPrintWhenDetailOverflows="true"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{OUTROS4}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="586" y="0" width="84" height="10" isPrintWhenDetailOverflows="true"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{OUTROS5}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="670" y="0" width="54" height="10" isPrintWhenDetailOverflows="true"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{OUTROS6}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="724" y="0" width="78" height="10" isPrintWhenDetailOverflows="true"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{OUTROS7}]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement x="1" y="0" width="799" height="1"/>
+			</line>
+		</band>
+	</detail>
+	<pageFooter>
+		<band height="15">
+			<textField evaluationTime="Report">
+				<reportElement x="385" y="0" width="416" height="15" forecolor="#000000"/>
+				<box leftPadding="2">
+					<topPen lineWidth="1.0"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font size="10" isBold="false"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[" " + $V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="-1" y="0" width="386" height="15" forecolor="#000000"/>
+				<box leftPadding="2">
+					<topPen lineWidth="1.0"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font size="10" isBold="false"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Pagina "+$V{PAGE_NUMBER}+" de"]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageFooter>
+	<summary>
+		<band height="39">
+			<subreport>
+				<reportElement x="42" y="3" width="699" height="35"/>
+				<subreportParameter name="Unidade">
+					<subreportParameterExpression><![CDATA[$P{Unidade}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="mes">
+					<subreportParameterExpression><![CDATA[$P{mes}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="Empresa">
+					<subreportParameterExpression><![CDATA[$P{Empresa}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="ano">
+					<subreportParameterExpression><![CDATA[$P{ano}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression class="java.lang.String"><![CDATA["IndicCapta_Sub.jasper"]]></subreportExpression>
+			</subreport>
+		</band>
+	</summary>
+	<noData>
+		<band height="21">
+			<textField>
+				<reportElement x="-1" y="0" width="801" height="21"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Por favor, gere a consolidação do periodo e unidade desejados"]]></textFieldExpression>
+			</textField>
+		</band>
+	</noData>
+</jasperReport>

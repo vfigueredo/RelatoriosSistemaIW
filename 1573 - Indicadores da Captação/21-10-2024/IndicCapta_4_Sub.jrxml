@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="IndicadoresAnalitico" language="groovy" pageWidth="842" pageHeight="595" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="842" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0">
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<style name="Title" fontName="Times New Roman" fontSize="50" isBold="true" pdfFontName="Times-Bold"/>
+	<style name="SubTitle" forecolor="#736343" fontName="Arial" fontSize="18"/>
+	<style name="Column header" forecolor="#666666" fontName="Arial" fontSize="12" isBold="true"/>
+	<style name="Detail" fontName="Arial" fontSize="12"/>
+	<style name="Row" mode="Transparent">
+		<conditionalStyle>
+			<conditionExpression><![CDATA[$V{REPORT_COUNT}%2 == 0]]></conditionExpression>
+			<style backcolor="#E6DAC3"/>
+		</conditionalStyle>
+	</style>
+	<style name="Crosstab Data Text" hAlign="Center"/>
+	<subDataset name="dataset1"/>
+	<parameter name="CUSTOMER_LOGOTYPE_URL" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="Empresa" class="java.lang.String">
+		<property name="TYPE" value="#SQL"/>
+		<property name="SQL_COMMAND" value=" Select name ID, name from GlbEnterprise where id in (select distinct (IDEnterprise) from ctrcontract) union Select &apos;0&apos;, &apos;Todas&apos; order by name"/>
+		<property name="LABEL" value="Selecione a Empresa"/>
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="mes" class="java.lang.String">
+		<property name="TYPE" value="#SQL"/>
+		<property name="SQL_COMMAND" value="select distinct mes ID, mes name from td_indicadores_captacao order by mes"/>
+		<property name="LABEL" value="Selecione o mes"/>
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="ano" class="java.lang.String">
+		<property name="TYPE" value="#SQL"/>
+		<property name="SQL_COMMAND" value="select distinct ano ID, ano name from td_indicadores_captacao order by ano"/>
+		<property name="LABEL" value="Selecione o ano"/>
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["C:\\Users\\hamilton\\Desktop\\Escala Geral\\"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="Unidade" class="java.lang.String">
+		<property name="TYPE" value="#SQL"/>
+		<property name="SQL_COMMAND" value="select keyindex ID, translation Name from ifrconstantitem where idconstant = 680 and keyindex not in (0,3,4) order by name"/>
+		<defaultValueExpression><![CDATA["1"]]></defaultValueExpression>
+	</parameter>
+	<queryString>
+		<![CDATA[declare @ano int, @mes int, @empresa int, @unidade int
+
+set @ano = $P{ano}
+set @mes = $P{mes}
+set @empresa  = $P{Empresa}
+set @unidade = $P{Unidade}
+
+select case when A.OUTROS4 is null then '--' else a.OUTROS4 end OUTROS4, sum( case when (ANO is null and MES	is null and EMPRESA	is null and a.SEQ	is null and a.INDICADOR	is null and ATEND	is null and PACIENTE is null and
+			OUTROS1	is null and OUTROS2	is null and OUTROS3	is null and OUTROS4	is null and OUTROS5	is null and OUTROS6	is null and OUTROS7	is null and
+			DATA_INICIAL is null and DATA_FINAL	is null and IDUNIDADE is null
+			) then 0 else 1 end) Elegibibilidade
+from (select distinct SEQ, INDICADOR from td_indicadores_captacao (nolock)) base left join td_indicadores_captacao a on (a.seq = base.seq
+																														 and a.indicador = base.indicador
+																														 and ano = @ano
+																														 and mes = @mes
+																														 and a.idunidade = @unidade
+																														)
+																				 left join capadmission b on (b.id = a.atend)
+																				 join glbenterprise c on (c.id = b.identerprise
+																										  and (c.id = @empresa or @empresa = '0'))
+																				 left join glbhealthprovider d on (d.id = a.idunidade or d.id = @unidade)
+
+where
+	base.seq  in (6)
+group by A.OUTROS4]]>
+	</queryString>
+	<field name="OUTROS4" class="java.lang.String"/>
+	<field name="Elegibibilidade" class="java.lang.Integer"/>
+	<variable name="Qtd_1" class="java.lang.Integer" calculation="Sum">
+		<variableExpression><![CDATA[$F{Elegibibilidade}]]></variableExpression>
+	</variable>
+	<group name="Indicador">
+		<groupExpression><![CDATA[$F{OUTROS4}]]></groupExpression>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<pageHeader>
+		<band splitType="Stretch"/>
+	</pageHeader>
+	<detail>
+		<band height="13">
+			<textField>
+				<reportElement x="0" y="0" width="260" height="13"/>
+				<textElement verticalAlignment="Middle">
+					<font size="10" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{OUTROS4}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="260" y="0" width="100" height="13"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="10" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.Integer"><![CDATA[$F{Elegibibilidade}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<summary>
+		<band height="13">
+			<textField>
+				<reportElement x="260" y="0" width="100" height="13"/>
+				<box>
+					<topPen lineWidth="1.0"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.Integer"><![CDATA[$V{Qtd_1}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="0" width="260" height="13"/>
+				<box>
+					<topPen lineWidth="1.0"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font size="10" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Total de Registros"]]></textFieldExpression>
+			</textField>
+		</band>
+	</summary>
+</jasperReport>

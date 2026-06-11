@@ -1,0 +1,791 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Pacientes por profissional" language="groovy" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
+	<property name="ireport.zoom" value="1.5"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<style name="Crosstab Data Text" hAlign="Center"/>
+	<parameter name="Atendimento" class="java.lang.String">
+		<defaultValueExpression><![CDATA["0"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="Registro_Profissional" class="java.lang.String">
+		<defaultValueExpression><![CDATA["0"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="Especialidade" class="java.lang.String">
+		<property name="LABEL" value="Selecione a Especialidade"/>
+		<property name="TYPE" value="#SQL"/>
+		<property name="SQL_COMMAND" value="select a.ID, a.codename NAME from scccode a join capcarestaff b on (b.SCSpeciality = a.id) where  a.idtable = 144 and a.id not in (1,146167,146169,146168,151008,191802,690614,697482) union select &apos;0&apos;, &apos; Todos&apos; order by codename"/>
+		<defaultValueExpression><![CDATA["0"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="Unidade" class="java.lang.String">
+		<property name="TYPE" value="#SQL"/>
+		<property name="LABEL" value="Unidade"/>
+		<property name="SQL_COMMAND" value="select keyindex ID, translation Name from ifrconstantitem where idconstant = 680 and keyindex not in (0,3,4) order by name"/>
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<queryString>
+		<![CDATA[set dateformat dmy;
+
+select * , b.name Unidade, '' Total
+from (
+		select distinct 'Multifilial' Base, a.idhealthprovider , a.id Atendimento, a.idpatient, a.identerprise, a.zonecode, a.status, a.checkindate, a.checkoutdate, a.checkoutcond, a.patientage, a.cause,
+			   a.admissiontype,j.name Paciente, j.gender,  k.name enterprisepayername, g.RegistryNumber Registro, f.id IDPErsonProf, f.name professionalname, l.codename Especialidade,
+			   a.AdmissionLevel , m.translation Grau_Dependencia, j.District Bairro, a.DeliveryRoute, n.translation Zona, o.name Dispensacao,
+			   b.id Prescricao, c.editiontype, p.translation TipoEdicao,  c.seq, case when c.instructions is null then l.codename else c.instructions end Terapia,
+			   case when c.instructions is null then 'Registro incorreto em prescrição (Terapía) ou equipe (Médico Visitador)' else d.name end Frequencia,
+			   e.IDProfessional, f.name Profissional, e.scspeciality
+
+		from dbiwsosvida.dbo.capadmission a (nolock) join dbiwsosvida.dbo.capprescription b (nolock) on (b.id in (select max(id) from dbiwsosvida.dbo.capprescription where idadmission = a.id))
+													 join dbiwsosvida.dbo.capcarestaff e (nolock) on (e.idadmission = a.id and e.EndDate is null and e.ProfessionalRef = 1)
+													 join dbiwsosvida.dbo.glbperson f (nolock) on (f.id = e.idprofessional)
+													 join dbiwsosvida.dbo.glbprofessional g (nolock) on (g.idperson = f.id and g.scspeciality = e.scspeciality)
+													 left join dbiwsosvida.dbo.GlbProfSpec gg (nolock) on (gg.IDProfessional = f.id)
+													 join dbiwsosvida.dbo.glbhealthprovider h (nolock) on (a.idhealthprovider = h.id)
+													 join dbiwsosvida.dbo.glbpatient i (nolock) on (a.idpatient = i.id)
+													 join dbiwsosvida.dbo.glbperson j (nolock) on (i.idperson = j.id)
+													 join dbiwsosvida.dbo.glbenterprise k (nolock) on (k.id = a.identerprise)
+													 join dbiwsosvida.dbo.scccode l (nolock) on (g.scspeciality = l.id)
+													 join dbiwsosvida.dbo.ifrconstantitem m (nolock) on (m.idconstant = 127 and m.keyindex = a.AdmissionLevel)
+													 join dbiwsosvida.dbo.ifrconstantitem n (nolock) on (n.idconstant = 147 and n.keyindex = a.DeliveryRoute)
+													 join dbiwsosvida.dbo.GlbHealthProvDep o (nolock) on (o.id = a.IDHealthProvDep)
+													 left join dbiwsosvida.dbo.capprescripitem c (nolock) on (c.idprescription = b.id
+																											   and c.seq = 24
+																											   and c.editiontype in (0,1,3,4)
+																											   and (g.scspeciality in ( case when c.Instructions like '%fisio%' then 11
+																																	        when c.Instructions like '%Nutri%' then 16
+																																	        when c.Instructions like '%Fono%' then 13
+																																	        when c.Instructions like '%Enfer%' then 4
+																																			when c.Instructions like '%Psic%' then 17
+																																	        when c.Instructions like '%terap%ocupacional%' then 145935
+																																	        when c.Instructions like '%M%dic%' then (select id
+																																	        										from dbiwsosvida.dbo.scccode
+																																	        										where
+																																	        											idtable = 144
+																																	        											and codename like '%m%dic%'
+																																	        											and id =e.scspeciality
+																																	        											and Leader = 1
+
+																																											)
+																																end
+																															)
+																													or
+																												   gg.scspeciality in ( case when c.Instructions like '%fisio%' then 11
+																																	        when c.Instructions like '%Nutri%' then 16
+																																	        when c.Instructions like '%Fono%' then 13
+																																	        when c.Instructions like '%Enfer%' then 4
+																																			when c.Instructions like '%Psic%' then 17
+																																	        when c.Instructions like '%terap%ocupacional%' then 145935
+																																	        when c.Instructions like '%M%dic%' then (select id
+																																	        										from dbiwsosvida.dbo.scccode
+																																	        										where
+																																	        											idtable = 144
+																																	        											and codename like '%m%dic%'
+																																	        											and id =e.scspeciality
+																																	        											and Leader = 1
+
+																																											)
+																																end
+																															)
+																												)
+																											 )
+													 left join dbiwsosvida.dbo.glbfrequency d (nolock) on (d.id = c.IDFrequency)
+													 left join dbiwsosvida.dbo.ifrconstantitem p (nolock) on (p.idconstant = 1230 and p.keyindex = c.EditionType and c.EditionType <> 1)
+													 left join (select idprescription, instructions, max(id) id
+																from dbiwsosvida.dbo.capprescripitem
+																where
+																	seq = 24
+																group by idprescription, instructions
+															   ) visitas on (visitas.idprescription = b.id and visitas.id =  c.id)
+
+	) a join dbIwSOSVida.dbo.glbhealthprovider b (nolock) on (b.id = a.idhealthprovider)
+where
+	(convert(varchar,a.Registro) like $P{Registro_Profissional} or $P{Registro_Profissional} = 0)  and
+	(a.scspeciality = $P{Especialidade} or $P{Especialidade} = 0) and
+	b.id = $P{Unidade}
+	and a.status = 1
+	and (a.atendimento = $P{Atendimento} or $P{Atendimento} = 0)
+
+order by Especialidade,professionalname,  tipoedicao, Paciente]]>
+	</queryString>
+	<field name="Base" class="java.lang.String"/>
+	<field name="idhealthprovider" class="java.lang.Integer"/>
+	<field name="Atendimento" class="java.lang.Integer"/>
+	<field name="idpatient" class="java.lang.Integer"/>
+	<field name="identerprise" class="java.lang.Integer"/>
+	<field name="zonecode" class="java.lang.Short"/>
+	<field name="status" class="java.lang.Short"/>
+	<field name="checkindate" class="java.sql.Timestamp"/>
+	<field name="checkoutdate" class="java.sql.Timestamp"/>
+	<field name="checkoutcond" class="java.lang.Short"/>
+	<field name="patientage" class="java.lang.String"/>
+	<field name="cause" class="java.lang.String"/>
+	<field name="admissiontype" class="java.lang.Short"/>
+	<field name="Paciente" class="java.lang.String"/>
+	<field name="gender" class="java.lang.Short"/>
+	<field name="enterprisepayername" class="java.lang.String"/>
+	<field name="Registro" class="java.lang.String"/>
+	<field name="IDPErsonProf" class="java.lang.Integer"/>
+	<field name="professionalname" class="java.lang.String"/>
+	<field name="Especialidade" class="java.lang.String"/>
+	<field name="AdmissionLevel" class="java.lang.Short"/>
+	<field name="Grau_Dependencia" class="java.lang.String"/>
+	<field name="Bairro" class="java.lang.String"/>
+	<field name="DeliveryRoute" class="java.lang.Short"/>
+	<field name="Zona" class="java.lang.String"/>
+	<field name="Dispensacao" class="java.lang.String"/>
+	<field name="Prescricao" class="java.lang.Integer"/>
+	<field name="editiontype" class="java.lang.Short"/>
+	<field name="TipoEdicao" class="java.lang.String"/>
+	<field name="seq" class="java.lang.Short"/>
+	<field name="Terapia" class="java.lang.String"/>
+	<field name="Frequencia" class="java.lang.String"/>
+	<field name="IDProfessional" class="java.lang.Integer"/>
+	<field name="Profissional" class="java.lang.String"/>
+	<field name="scspeciality" class="java.lang.Integer"/>
+	<field name="ID" class="java.lang.Integer"/>
+	<field name="IDMessage" class="java.lang.Integer"/>
+	<field name="IDMessageUpd" class="java.lang.Integer"/>
+	<field name="HealthCareType" class="java.lang.Short"/>
+	<field name="Logotype" class="java.lang.Short"/>
+	<field name="MatTaxFactor" class="java.lang.Double"/>
+	<field name="Name" class="java.lang.String"/>
+	<field name="IDUserNotify" class="java.lang.String"/>
+	<field name="Inactive" class="java.lang.Short"/>
+	<field name="PatStoAreaAnalytic" class="java.lang.Short"/>
+	<field name="IDDispensingArea" class="java.lang.Integer"/>
+	<field name="IDHealthProvGroup" class="java.lang.Integer"/>
+	<field name="IDEquipmentUnit" class="java.lang.Integer"/>
+	<field name="CheckMedBlocEvol" class="java.lang.Short"/>
+	<field name="CheckNurseBlocEvol" class="java.lang.Short"/>
+	<field name="CheckMedForceMat" class="java.lang.Short"/>
+	<field name="CheckMedRegMat" class="java.lang.Short"/>
+	<field name="CheckNurseRegMat" class="java.lang.Short"/>
+	<field name="Checkallowfacerec" class="java.lang.Short"/>
+	<field name="SOS_COR_UNIDADE" class="java.lang.Integer"/>
+	<field name="BlcConflictAgenda" class="java.lang.Short"/>
+	<field name="MobileCheckMode" class="java.lang.Short"/>
+	<field name="MobileHostName" class="java.lang.String"/>
+	<field name="MobileMailText" class="java.lang.String"/>
+	<field name="MobileCheckinByGPS" class="java.lang.Short"/>
+	<field name="Telephone" class="java.lang.String"/>
+	<field name="TelephoneTeam" class="java.lang.String"/>
+	<field name="Unidade" class="java.lang.String"/>
+	<field name="Total" class="java.lang.String"/>
+	<variable name="id_1" class="java.lang.Integer" resetType="Group" resetGroup="Profissional" calculation="Count">
+		<variableExpression><![CDATA[$F{Atendimento}]]></variableExpression>
+	</variable>
+	<variable name="id_1_1" class="java.lang.Integer" calculation="Count">
+		<variableExpression><![CDATA[$F{Atendimento}]]></variableExpression>
+	</variable>
+	<group name="Especialidade">
+		<groupExpression><![CDATA[$F{Especialidade}]]></groupExpression>
+		<groupHeader>
+			<band height="14">
+				<textField>
+					<reportElement mode="Opaque" x="0" y="0" width="555" height="14" backcolor="#CCCCCC"/>
+					<textElement verticalAlignment="Middle">
+						<font isBold="true"/>
+					</textElement>
+					<textFieldExpression class="java.lang.String"><![CDATA["Especialidade: "+$F{Especialidade}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupHeader>
+		<groupFooter>
+			<band height="20">
+				<textField>
+					<reportElement mode="Opaque" x="496" y="0" width="59" height="11" forecolor="#000000" backcolor="#CCCCCC"/>
+					<box>
+						<pen lineColor="#000000"/>
+						<topPen lineWidth="1.0" lineColor="#000000"/>
+						<leftPen lineColor="#000000"/>
+						<bottomPen lineColor="#000000"/>
+						<rightPen lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font size="8" isBold="true"/>
+					</textElement>
+					<textFieldExpression class="java.lang.Integer"><![CDATA[$V{id_1_1}]]></textFieldExpression>
+				</textField>
+				<staticText>
+					<reportElement mode="Opaque" x="0" y="0" width="496" height="11" forecolor="#000000" backcolor="#CCCCCC"/>
+					<box>
+						<pen lineColor="#000000"/>
+						<topPen lineWidth="1.0" lineColor="#000000"/>
+						<leftPen lineColor="#000000"/>
+						<bottomPen lineColor="#000000"/>
+						<rightPen lineColor="#000000"/>
+					</box>
+					<textElement verticalAlignment="Middle">
+						<font size="8" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Total de Pacientes:]]></text>
+				</staticText>
+			</band>
+		</groupFooter>
+	</group>
+	<group name="Profissional">
+		<groupExpression><![CDATA[$F{professionalname}]]></groupExpression>
+		<groupHeader>
+			<band height="27">
+				<textField>
+					<reportElement mode="Opaque" x="0" y="0" width="555" height="15" backcolor="#CCFFCC"/>
+					<textElement verticalAlignment="Middle">
+						<font isBold="true"/>
+					</textElement>
+					<textFieldExpression class="java.lang.String"><![CDATA["Registro: "+$F{Registro}+" - Profissional: "+ $F{professionalname}]]></textFieldExpression>
+				</textField>
+				<staticText>
+					<reportElement x="0" y="15" width="26" height="12"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font size="8" isBold="true"/>
+					</textElement>
+					<text><![CDATA[ID]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="26" y="15" width="126" height="12"/>
+					<textElement verticalAlignment="Middle">
+						<font size="8" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Paciente]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="262" y="15" width="74" height="12"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font size="8" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Grau Dependência]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="410" y="15" width="79" height="12"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font size="8" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Bairro]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="152" y="15" width="110" height="12"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font size="8" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Convênio]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="489" y="15" width="66" height="12"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font size="8" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Zona]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="336" y="15" width="74" height="12"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font size="8" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Frequência]]></text>
+				</staticText>
+			</band>
+		</groupHeader>
+		<groupFooter>
+			<band height="19">
+				<textField>
+					<reportElement mode="Opaque" x="0" y="0" width="555" height="11" forecolor="#FF0033" backcolor="#CCCCCC"/>
+					<textElement textAlignment="Right" verticalAlignment="Middle" markup="none">
+						<font size="8" isBold="true"/>
+					</textElement>
+					<textFieldExpression class="java.lang.String"><![CDATA["Total de Pacientes do profissional"+$F{professionalname}+": "+$V{id_1}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupFooter>
+	</group>
+	<group name="TipoSolicitação">
+		<groupExpression><![CDATA[$F{TipoEdicao}]]></groupExpression>
+		<groupHeader>
+			<band height="13">
+				<textField>
+					<reportElement mode="Opaque" x="0" y="0" width="555" height="13" backcolor="#FFFF99"/>
+					<textElement verticalAlignment="Middle" markup="none">
+						<font isBold="true"/>
+					</textElement>
+					<textFieldExpression class="java.lang.String"><![CDATA["Tipo de Solicitação: "+$F{TipoEdicao}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupHeader>
+		<groupFooter>
+			<band height="3"/>
+		</groupFooter>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="65">
+			<rectangle>
+				<reportElement x="428" y="0" width="126" height="65"/>
+			</rectangle>
+			<staticText>
+				<reportElement x="441" y="11" width="100" height="20"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Impresso em:]]></text>
+			</staticText>
+			<textField pattern="dd/MM/yyyy h.mm a">
+				<reportElement x="435" y="31" width="115" height="22"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="false"/>
+				</textElement>
+				<textFieldExpression class="java.util.Date"><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="137" y="0" width="291" height="65" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<pen lineWidth="1.0"/>
+					<topPen lineWidth="1.0"/>
+					<leftPen lineWidth="1.0"/>
+					<bottomPen lineWidth="1.0"/>
+					<rightPen lineWidth="1.0"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle" markup="none">
+					<font fontName="Arial" size="16" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Relatório Pacientes por Profissional \nUnidade: "+$F{Unidade}]]></textFieldExpression>
+			</textField>
+			<rectangle>
+				<reportElement x="0" y="0" width="137" height="65"/>
+			</rectangle>
+			<image onErrorType="Blank">
+				<reportElement x="8" y="7" width="120" height="53">
+					<property name="TYPE" value="#IMAGE_FROM_DATABASE"/>
+				</reportElement>
+				<imageExpression class="java.lang.String"><![CDATA["9527"]]></imageExpression>
+			</image>
+			<staticText>
+				<reportElement x="441" y="53" width="100" height="9"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="6"/>
+				</textElement>
+				<text><![CDATA[Rel.1335]]></text>
+			</staticText>
+		</band>
+	</title>
+	<detail>
+		<band height="9" splitType="Stretch">
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="26" height="9" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.lang.Integer"><![CDATA[$F{Atendimento}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="26" y="0" width="126" height="9" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{Paciente}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="262" y="0" width="74" height="9" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{Grau_Dependencia}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="410" y="0" width="79" height="9" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{Bairro}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="152" y="0" width="110" height="9" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{enterprisepayername}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="489" y="0" width="66" height="9" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{Zona}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="336" y="0" width="74" height="9" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{Frequencia}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<pageFooter>
+		<band height="13">
+			<textField isStretchWithOverflow="true" evaluationTime="Report">
+				<reportElement stretchType="RelativeToBandHeight" x="271" y="0" width="284" height="13" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="1.0"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[" " + $V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true">
+				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="271" height="13" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="1.0"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Página "+$V{PAGE_NUMBER}+" de "]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageFooter>
+	<summary>
+		<band height="98">
+			<staticText>
+				<reportElement mode="Opaque" x="0" y="0" width="555" height="20" backcolor="#CCCCCC"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[QUADRO RESUMO:]]></text>
+			</staticText>
+			<crosstab>
+				<reportElement x="0" y="20" width="555" height="78"/>
+				<crosstabHeaderCell>
+					<cellContents>
+						<staticText>
+							<reportElement style="Crosstab Data Text" stretchType="RelativeToBandHeight" mode="Opaque" x="0" y="0" width="94" height="17" isPrintWhenDetailOverflows="true" backcolor="#EAFFBF"/>
+							<box>
+								<pen lineWidth="1.0"/>
+								<topPen lineWidth="1.0"/>
+								<leftPen lineWidth="1.0"/>
+								<bottomPen lineWidth="1.0"/>
+								<rightPen lineWidth="1.0"/>
+							</box>
+							<textElement verticalAlignment="Middle">
+								<font size="8" isBold="true"/>
+							</textElement>
+							<text><![CDATA[Especialidade]]></text>
+						</staticText>
+						<staticText>
+							<reportElement style="Crosstab Data Text" stretchType="RelativeToBandHeight" mode="Opaque" x="94" y="0" width="155" height="17" isPrintWhenDetailOverflows="true" backcolor="#EAFFBF"/>
+							<box>
+								<pen lineWidth="1.0"/>
+								<topPen lineWidth="1.0"/>
+								<leftPen lineWidth="1.0"/>
+								<bottomPen lineWidth="1.0"/>
+								<rightPen lineWidth="1.0"/>
+							</box>
+							<textElement verticalAlignment="Middle">
+								<font size="8" isBold="true"/>
+							</textElement>
+							<text><![CDATA[Profissional]]></text>
+						</staticText>
+					</cellContents>
+				</crosstabHeaderCell>
+				<rowGroup name="Especialidade" width="94" totalPosition="End">
+					<bucket>
+						<bucketExpression class="java.lang.String"><![CDATA[$F{Especialidade}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents backcolor="#EAFFBF" mode="Opaque">
+							<box>
+								<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+							</box>
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement style="Crosstab Data Text" stretchType="RelativeToBandHeight" x="0" y="0" width="94" height="31" isPrintWhenDetailOverflows="true"/>
+								<box>
+									<pen lineWidth="1.0"/>
+									<topPen lineWidth="1.0"/>
+									<leftPen lineWidth="1.0"/>
+									<bottomPen lineWidth="1.0"/>
+									<rightPen lineWidth="1.0"/>
+								</box>
+								<textElement verticalAlignment="Middle">
+									<font size="8"/>
+								</textElement>
+								<textFieldExpression class="java.lang.String"><![CDATA[$V{Especialidade}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents backcolor="#A0BF60" mode="Opaque">
+							<box>
+								<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+							</box>
+							<staticText>
+								<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="249" height="14" isPrintWhenDetailOverflows="true"/>
+								<box>
+									<pen lineWidth="1.0"/>
+									<topPen lineWidth="1.0"/>
+									<leftPen lineWidth="1.0"/>
+									<bottomPen lineWidth="1.0"/>
+									<rightPen lineWidth="1.0"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[Total Especialidade]]></text>
+							</staticText>
+						</cellContents>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<rowGroup name="professionalname" width="155" totalPosition="End">
+					<bucket>
+						<bucketExpression class="java.lang.String"><![CDATA[$F{professionalname}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents backcolor="#EAFFBF" mode="Opaque">
+							<box>
+								<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+							</box>
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement style="Crosstab Data Text" stretchType="RelativeToBandHeight" x="0" y="0" width="155" height="16" isPrintWhenDetailOverflows="true"/>
+								<box>
+									<pen lineWidth="1.0"/>
+									<topPen lineWidth="1.0"/>
+									<leftPen lineWidth="1.0"/>
+									<bottomPen lineWidth="1.0"/>
+									<rightPen lineWidth="1.0"/>
+								</box>
+								<textElement verticalAlignment="Middle">
+									<font size="8"/>
+								</textElement>
+								<textFieldExpression class="java.lang.String"><![CDATA[$V{professionalname}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents backcolor="#F7FFE6" mode="Opaque">
+							<box>
+								<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+							</box>
+							<staticText>
+								<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="155" height="15" isPrintWhenDetailOverflows="true"/>
+								<box>
+									<pen lineWidth="1.0"/>
+									<topPen lineWidth="1.0"/>
+									<leftPen lineWidth="1.0"/>
+									<bottomPen lineWidth="1.0"/>
+									<rightPen lineWidth="1.0"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[Total Profissional]]></text>
+							</staticText>
+						</cellContents>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<columnGroup name="Frequencia" height="17" totalPosition="End">
+					<bucket>
+						<bucketExpression class="java.lang.String"><![CDATA[$F{Frequencia}]]></bucketExpression>
+					</bucket>
+					<crosstabColumnHeader>
+						<cellContents backcolor="#EAFFBF" mode="Opaque">
+							<box>
+								<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+							</box>
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement style="Crosstab Data Text" stretchType="RelativeToBandHeight" x="0" y="0" width="59" height="17" isPrintWhenDetailOverflows="true"/>
+								<box>
+									<pen lineWidth="1.0"/>
+									<topPen lineWidth="1.0"/>
+									<leftPen lineWidth="1.0"/>
+									<bottomPen lineWidth="1.0"/>
+									<rightPen lineWidth="1.0"/>
+								</box>
+								<textElement verticalAlignment="Middle">
+									<font size="6" isBold="true"/>
+								</textElement>
+								<textFieldExpression class="java.lang.String"><![CDATA[$V{Frequencia}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabColumnHeader>
+					<crosstabTotalColumnHeader>
+						<cellContents backcolor="#F7FFE6" mode="Opaque">
+							<box>
+								<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+							</box>
+							<staticText>
+								<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="41" height="17" isPrintWhenDetailOverflows="true"/>
+								<box>
+									<pen lineWidth="1.0"/>
+									<topPen lineWidth="1.0"/>
+									<leftPen lineWidth="1.0"/>
+									<bottomPen lineWidth="1.0"/>
+									<rightPen lineWidth="1.0"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[Total Dispensacao]]></text>
+							</staticText>
+						</cellContents>
+					</crosstabTotalColumnHeader>
+				</columnGroup>
+				<measure name="AtendimentoMeasure" class="java.lang.Integer" calculation="Count">
+					<measureExpression><![CDATA[$F{Atendimento}]]></measureExpression>
+				</measure>
+				<crosstabCell width="59" height="16">
+					<cellContents>
+						<box>
+							<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						</box>
+						<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+							<reportElement style="Crosstab Data Text" stretchType="RelativeToBandHeight" x="0" y="0" width="59" height="16" isPrintWhenDetailOverflows="true"/>
+							<box>
+								<pen lineWidth="1.0"/>
+								<topPen lineWidth="1.0"/>
+								<leftPen lineWidth="1.0"/>
+								<bottomPen lineWidth="1.0"/>
+								<rightPen lineWidth="1.0"/>
+							</box>
+							<textElement verticalAlignment="Middle">
+								<font size="6"/>
+							</textElement>
+							<textFieldExpression class="java.lang.Integer"><![CDATA[$V{AtendimentoMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="59" height="14" rowTotalGroup="Especialidade">
+					<cellContents backcolor="#A0BF60" mode="Opaque">
+						<box>
+							<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						</box>
+						<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+							<reportElement style="Crosstab Data Text" stretchType="RelativeToBandHeight" x="0" y="0" width="59" height="14" isPrintWhenDetailOverflows="true"/>
+							<box>
+								<pen lineWidth="1.0"/>
+								<topPen lineWidth="1.0"/>
+								<leftPen lineWidth="1.0"/>
+								<bottomPen lineWidth="1.0"/>
+								<rightPen lineWidth="1.0"/>
+							</box>
+							<textElement verticalAlignment="Middle">
+								<font size="6" isBold="true"/>
+							</textElement>
+							<textFieldExpression class="java.lang.Integer"><![CDATA[$V{AtendimentoMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="41" height="16" columnTotalGroup="Frequencia">
+					<cellContents backcolor="#F7FFE6" mode="Opaque">
+						<box>
+							<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						</box>
+						<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+							<reportElement style="Crosstab Data Text" stretchType="RelativeToBandHeight" x="0" y="0" width="41" height="16" isPrintWhenDetailOverflows="true"/>
+							<box>
+								<pen lineWidth="1.0"/>
+								<topPen lineWidth="1.0"/>
+								<leftPen lineWidth="1.0"/>
+								<bottomPen lineWidth="1.0"/>
+								<rightPen lineWidth="1.0"/>
+							</box>
+							<textElement verticalAlignment="Middle">
+								<font size="8"/>
+							</textElement>
+							<textFieldExpression class="java.lang.Integer"><![CDATA[$V{AtendimentoMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="41" height="14" rowTotalGroup="Especialidade" columnTotalGroup="Frequencia">
+					<cellContents backcolor="#A0BF60" mode="Opaque">
+						<box>
+							<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						</box>
+						<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+							<reportElement style="Crosstab Data Text" stretchType="RelativeToBandHeight" x="0" y="0" width="41" height="14" isPrintWhenDetailOverflows="true"/>
+							<box>
+								<pen lineWidth="1.0"/>
+								<topPen lineWidth="1.0"/>
+								<leftPen lineWidth="1.0"/>
+								<bottomPen lineWidth="1.0"/>
+								<rightPen lineWidth="1.0"/>
+							</box>
+							<textElement verticalAlignment="Middle">
+								<font size="8" isBold="true"/>
+							</textElement>
+							<textFieldExpression class="java.lang.Integer"><![CDATA[$V{AtendimentoMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="59" height="16" rowTotalGroup="professionalname">
+					<cellContents backcolor="#F7FFE6" mode="Opaque">
+						<box>
+							<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						</box>
+						<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+							<reportElement style="Crosstab Data Text" stretchType="RelativeToBandHeight" x="0" y="0" width="59" height="15" isPrintWhenDetailOverflows="true"/>
+							<box>
+								<pen lineWidth="1.0"/>
+								<topPen lineWidth="1.0"/>
+								<leftPen lineWidth="1.0"/>
+								<bottomPen lineWidth="1.0"/>
+								<rightPen lineWidth="1.0"/>
+							</box>
+							<textElement verticalAlignment="Middle">
+								<font size="6" isBold="true"/>
+							</textElement>
+							<textFieldExpression class="java.lang.Integer"><![CDATA[$V{AtendimentoMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="41" height="16" rowTotalGroup="professionalname" columnTotalGroup="Frequencia">
+					<cellContents backcolor="#F7FFE6" mode="Opaque">
+						<box>
+							<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						</box>
+						<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+							<reportElement style="Crosstab Data Text" stretchType="RelativeToBandHeight" x="0" y="0" width="41" height="15" isPrintWhenDetailOverflows="true"/>
+							<box>
+								<pen lineWidth="1.0"/>
+								<topPen lineWidth="1.0"/>
+								<leftPen lineWidth="1.0"/>
+								<bottomPen lineWidth="1.0"/>
+								<rightPen lineWidth="1.0"/>
+							</box>
+							<textElement verticalAlignment="Middle">
+								<font size="8" isBold="true"/>
+							</textElement>
+							<textFieldExpression class="java.lang.Integer"><![CDATA[$V{AtendimentoMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+			</crosstab>
+		</band>
+	</summary>
+</jasperReport>

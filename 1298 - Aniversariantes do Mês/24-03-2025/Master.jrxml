@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Devoluções de Materiais no Domicílio" language="groovy" pageWidth="842" pageHeight="595" orientation="Landscape" columnWidth="802" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
+	<property name="ireport.zoom" value="1.5"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<parameter name="CUSTOMER_LOGOTYPE_URL" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="Mes" class="java.lang.String">
+		<property name="CONSTANT_NAME" value="K_SOS_MESES"/>
+		<property name="TYPE" value="#IWCONSTANT"/>
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="Unidade" class="java.lang.String">
+		<property name="TYPE" value="#SQL"/>
+		<property name="SQL_COMMAND" value="select keyindex ID, translation Name from ifrconstantitem where idconstant = 680 and keyindex not in (0,3,4) order by name"/>
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<queryString>
+		<![CDATA[set dateformat dmy
+
+select f.id IDunidade, f.name Unidade,day(a.Birthday) Dia,e.translation Mês, a.name Profissional, d.translation Cargo, c.translation Setor
+from glbperson a (nolock) join glbprofessional b (nolock) on (b.idperson = a.id)
+						  join ifrconstantitem c  (nolock) on (c.idconstant = 961 and c.keyindex = b.SOS_SETOR)
+						  join ifrconstantitem d  (nolock) on(d.idconstant = 954 and d.keyindex = a.SOS_CARGO)
+						  join ifrconstantitem  e (nolock) on (e.idconstant = 967 and e.keyindex = month(a.Birthday))
+						  join glbhealthprovider f (nolock) on (f.id = a.idhealthprovider)
+where
+	b.active = 1
+	and b.idperson = a.id
+	and ContractPolicy in (0,2,3,4)
+	and e.keyindex = $P{Mes}
+	and f.id =$P{Unidade}
+
+order by  e.translation, dia]]>
+	</queryString>
+	<field name="IDunidade" class="java.lang.Integer"/>
+	<field name="Unidade" class="java.lang.String"/>
+	<field name="Dia" class="java.lang.Integer"/>
+	<field name="Mês" class="java.lang.String"/>
+	<field name="Profissional" class="java.lang.String"/>
+	<field name="Cargo" class="java.lang.String"/>
+	<field name="Setor" class="java.lang.String"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="68" splitType="Stretch">
+			<rectangle>
+				<reportElement x="674" y="3" width="126" height="65"/>
+			</rectangle>
+			<rectangle>
+				<reportElement x="162" y="3" width="512" height="65"/>
+			</rectangle>
+			<rectangle>
+				<reportElement x="1" y="3" width="161" height="65"/>
+			</rectangle>
+			<image onErrorType="Blank">
+				<reportElement x="8" y="7" width="149" height="61">
+					<property name="TYPE" value="#IMAGE_FROM_DATABASE"/>
+				</reportElement>
+				<imageExpression class="java.lang.String"><![CDATA["9527"]]></imageExpression>
+			</image>
+			<staticText>
+				<reportElement x="687" y="7" width="100" height="20"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Impresso em:]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="163" y="6" width="511" height="61"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle" markup="none">
+					<font size="12" isBold="true" isStrikeThrough="false"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["ANIVERSARIANTES DO Mês \n" + $F{Mês}+"\nUnidade: "+$F{Unidade}]]></textFieldExpression>
+			</textField>
+			<textField pattern="dd/MM/yyyy h.mm a">
+				<reportElement x="681" y="30" width="115" height="18"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="false"/>
+				</textElement>
+				<textFieldExpression class="java.util.Date"><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="681" y="52" width="115" height="12"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle" markup="none">
+					<font fontName="Arial" size="8" isBold="false"/>
+				</textElement>
+				<text><![CDATA[Rel.: 1298]]></text>
+			</staticText>
+		</band>
+	</title>
+	<pageHeader>
+		<band height="25">
+			<staticText>
+				<reportElement mode="Opaque" x="67" y="5" width="268" height="20" backcolor="#CCFFCC"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Profissional]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="542" y="5" width="260" height="20" backcolor="#CCFFCC"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Departamento]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="1" y="5" width="66" height="20" backcolor="#CCFFCC"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Dia / Mês]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="335" y="5" width="207" height="20" backcolor="#CCFFCC"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Funcão]]></text>
+			</staticText>
+		</band>
+	</pageHeader>
+	<detail>
+		<band height="13" splitType="Stretch">
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="1" y="0" width="66" height="13" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{Dia}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="67" y="0" width="268" height="13" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{Profissional}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="335" y="0" width="207" height="13" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{Cargo}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="542" y="0" width="260" height="13" isPrintWhenDetailOverflows="true"/>
+				<box>
+					<topPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{Setor}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<pageFooter>
+		<band height="13" splitType="Stretch">
+			<textField>
+				<reportElement x="0" y="0" width="400" height="13"/>
+				<box>
+					<topPen lineWidth="1.0"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Página "+$V{PAGE_NUMBER}+" de"]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Report">
+				<reportElement x="400" y="0" width="402" height="13"/>
+				<box>
+					<topPen lineWidth="1.0"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[" " + $V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageFooter>
+</jasperReport>
